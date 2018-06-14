@@ -1,0 +1,61 @@
+databaseChangeLog:
+    - changeSet:
+        id: 1_dropTable-book-example
+        author: admin
+        preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            schemaName: THIS   
+            tableName: book        
+        changes:
+        - dropTable:
+            cascadeConstraints: true
+            tableName: book
+    
+    - changeSet:
+        id: 2_create_book_example
+        author: admin
+        comment: "book info table"
+        changes:
+            - createTable:
+                tableName: book
+                columns:
+                - column:
+                    name: id
+                    type: bigint                        
+                    constraints:                            
+                        nullable: false                            
+                - column:
+                    name: name
+                    type: varchar(255)
+                    constraints:
+                        nullable: false                            
+                - column:
+                    name: author
+                    type: varchar(255)
+                    constraints:
+                        nullable: true
+                - column:
+                    name: pages
+                    type: int(30)
+                    constraints:
+                        nullable: false
+                            
+    - changeSet:
+        id: 3_add_constraint_book_example
+        author: admin
+        comment: "add primary key, unique key to book"
+        changes:
+        - addPrimaryKey:
+            constraintName: PK_id
+            tableName: book
+            columnNames: id
+        - addUniqueConstraint:
+            constraintName: UK_name            
+            tableName: book
+            columnNames: name
+        - addAutoIncrement:
+            columnName: id
+            columnDataType: bigint
+            incrementBy: 1            
+            tableName: book

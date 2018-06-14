@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>vertx-embeded-springboot</artifactId>
+    <version>0.7-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>vertx-springboot</name>
+    <description>vertx asynchronous multi thread Project for Spring Boot</description>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+	    <artifactId>spring-boot-starter-parent</artifactId>
+        <version>1.5.8.RELEASE</version>
+    </parent>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>1.8</java.version>
+        <vertx.version>3.5.0</vertx.version>
+    </properties>
+
+    <dependencies>
+  	    <!-- vert.x core -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+	    <!-- Spring init example for jpa DB -->
+        <dependency>
+  		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- Spring Actuator dependency-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.hateoas</groupId>
+            <artifactId>spring-hateoas</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+	    <!-- vert.x web -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+	    <!-- vert.x async proxy handler -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+	  	    <artifactId>vertx-service-proxy</artifactId>
+	  	    <version>${vertx.version}</version>
+	    </dependency>
+	    <!-- vert.x code generator -->
+	    <dependency>
+      	    <groupId>io.vertx</groupId>
+  	  	    <artifactId>vertx-codegen</artifactId>
+      	    <version>${vertx.version}</version>
+      	    <scope>provided</scope>
+        </dependency>
+    	<!-- Spring Actuator for liquibase -->
+        <dependency>
+			<groupId>org.liquibase</groupId>
+			<artifactId>liquibase-core</artifactId>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+	    <dependency>
+    		<groupId>com.google.code.gson</groupId>
+    		<artifactId>gson</artifactId>
+    	</dependency>
+        <!-- Utility -->
+        <!--<dependency>-->
+	        <!--<groupId>org.projectlombok</groupId>-->
+		    <!--<artifactId>lombok</artifactId>-->
+            <!--<version>1.18.0</version>-->
+            <!--<scope>provided</scope>-->
+        <!--</dependency>-->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Spring Actuator for Web Monitoring -->  
+	    <dependency>
+	        <groupId>org.springframework.boot</groupId>
+	        <artifactId>spring-boot-starter-web</artifactId>
+	    </dependency>
+        <!-- https://mvnrepository.com/artifact/commons-configuration/commons-configuration -->
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>1.6</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+      <!-- dividing profiles -->
+        <resources>
+          <resource>
+              <directory>src/main/resources</directory>
+              <excludes>
+                  <exclude>profiles/**</exclude>
+              </excludes>
+          </resource>
+          <resource>
+              <directory>src/main/resources/profiles/${env}</directory>
+          </resource>
+        </resources>
+        <pluginManagement>
+        <plugins>
+        <!-- We specify the Maven compiler plugin as we need to set it to Java 1.8 -->
+          <plugin>
+              <artifactId>maven-compiler-plugin</artifactId>
+              <version>3.1</version>
+              <configuration>
+                  <source>${java.version}</source>
+                  <target>${java.version}</target>
+                  <annotationProcessors>
+                      <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
+                  </annotationProcessors>
+                  <compilerArgs>
+                      <arg>-AoutputDirectory=${project.basedir}/src/main</arg>
+                  </compilerArgs>
+              </configuration>
+          </plugin>
+        </plugins>
+        </pluginManagement>
+        <plugins>
+          <plugin>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-maven-plugin</artifactId>
+              <version>1.5.8.RELEASE</version>
+          </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <profile>
+            <id>h2local</id>
+            <properties>
+                <env>h2local</env>
+            </properties>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>mariadb</id>
+            <properties>
+                <env>mariadb</env>
+            </properties>
+        </profile>
+    </profiles>
+
+</project>

@@ -1,0 +1,48 @@
+databaseChangeLog:
+    - changeSet:
+        id: 4_insert_example
+        author: admin
+        changes:
+            - insert:                
+                tableName: book
+                columns:
+                    - column:
+                        name: id
+                        value: null
+                    - column:
+                        name: name
+                        value: 'Disparity based space variant image deblurring, Signal Processing: Image Communication'
+                    - column:
+                        name: author
+                        value: 'ChangsooJe,HyeonSangJeon,ChangHwanSon,HyungMinPark'
+                    - column:
+                        name: pages
+                        value: 792
+    - changeSet:
+        id: 5_sql_example
+        author: admin
+        changes:
+            - sql:            
+                dbms: h2, mysql
+                endDelimiter: \nGO
+                splitStatements: true
+                sql: insert into book (name, author, pages) values ('A Speech Enhancement Algorithm Based on Blind Signal Cancelation in Diffuse Noise Environments, IEICE TRANS', 'Jaesik Hwang, Jaepil Seo, Ji-Won Cho and Hyung-Min Park',407)
+                stripComments: true
+            - sql:            
+                dbms: h2, mysql
+                endDelimiter: \nGO
+                splitStatements: true
+                sql: insert into book (name, author, pages) values ('Preprocessing of independent vector analysis using feed-forward network for robust speech recognition , Lecture Notes in Computer Science', 'Myungwoo Oh and Hyung-Min Park',366)
+                stripComments: true
+            - sql:            
+                dbms: h2, mysql
+                endDelimiter: \nGO
+                splitStatements: true
+                sql: insert into book (name, author, pages) values ('An efficient method to remove boundary defects in block-based deblurring algorithm using multiple images, Image Processing and Image Understanding', 'Hyeon-Sang Jeon, Chang-Hwan Son, and Hyung-Min Park',0)
+                stripComments: true
+            - sql:            
+                dbms: h2, mysql
+                endDelimiter: \nGO
+                splitStatements: true
+                sql: insert into book (name, author, pages) values ('Music noise reduction based on normalized gradient coefficients and non-negative matrix factorization , Conference of Korean Society of Speech Sciences', 'Il-Young Jeong and Hyung-Min Park',0)
+                stripComments: true
