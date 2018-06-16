@@ -8,7 +8,6 @@ import com.vertx.worker.mvc.service.BookAsyncService;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
-
 /**
  * Facade sender class, sending to {@link BookAsyncService} requested Object.
  * @author hyeonsang jeon
