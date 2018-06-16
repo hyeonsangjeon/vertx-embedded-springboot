@@ -20,80 +20,81 @@ import com.vertx.worker.mvc.repository.BookRepository;
 
 /**
  * Concrete class, this class implement  based small bussiness logic needed with sysynchronous
+ *
  * @author hyeonsang jeon
  */
 @Service
 @Transactional
 public class BookServiceImpl {
-	
-	@Autowired
-	BookRepository bookRepository;
 
-	public JsonObject save(JsonObject reqParam) {
-		JsonObject result = new JsonObject();
-		Book data = bookRepository.save(new Book(reqParam));
+    @Autowired
+    BookRepository bookRepository;
 
-		result.put("statusCode", HttpStatus.OK.value());
-		result.put("data",data.toJson());
-		result.put("message","book save success");
-		return result;
-	}
+    public JsonObject save(JsonObject reqParam) {
+        JsonObject result = new JsonObject();
+        Book data = bookRepository.save(new Book(reqParam));
 
-	public JsonObject getAll() {
-		JsonObject result = new JsonObject();
+        result.put("statusCode", HttpStatus.OK.value());
+        result.put("data", data.toJson());
+        result.put("message", "book save success");
+        return result;
+    }
 
-		Iterable<Book> all = bookRepository.findAll();
-		List<Book> res = StreamSupport.stream(all.spliterator(), false).collect(toList());
-		Gson gson = new Gson();
-		JsonArray jsonArray = new JsonArray(gson.toJson(res));
+    public JsonObject getAll() {
+        JsonObject result = new JsonObject();
 
-		result.put("statusCode", HttpStatus.OK.value());
-		result.put("data",jsonArray);
-		result.put("message","book list information");
-		return result;
-	}
-	
+        Iterable<Book> all = bookRepository.findAll();
+        List<Book> res = StreamSupport.stream(all.spliterator(), false).collect(toList());
+        Gson gson = new Gson();
+        JsonArray jsonArray = new JsonArray(gson.toJson(res));
 
-	public  JsonObject get(Long bookId) {
-		JsonObject result = new JsonObject();
-		Book book = bookRepository.findOne(bookId);
+        result.put("statusCode", HttpStatus.OK.value());
+        result.put("data", jsonArray);
+        result.put("message", "book list information");
+        return result;
+    }
 
 
-		if(book !=null){
-			result.put("statusCode", HttpStatus.OK.value());
-			result.put("data",book.toJson());
-			result.put("message","unique book information");
-		}else{
-			result.put("statusCode", HttpStatus.NOT_FOUND.value());
-			result.put("data",new JsonObject());
-			result.put("message","no search book information");
-		}
+    public JsonObject get(Long bookId) {
+        JsonObject result = new JsonObject();
+        Book book = bookRepository.findOne(bookId);
 
-		return result;
-	}
-	
-	public JsonObject update(Book chkBook) {
-		JsonObject result = new JsonObject();
 
-		bookRepository.save(chkBook);
+        if (book != null) {
+            result.put("statusCode", HttpStatus.OK.value());
+            result.put("data", book.toJson());
+            result.put("message", "unique book information");
+        } else {
+            result.put("statusCode", HttpStatus.NOT_FOUND.value());
+            result.put("data", new JsonObject());
+            result.put("message", "no search book information");
+        }
 
-		Book changedBook = bookRepository.findOne(chkBook.getId());
+        return result;
+    }
 
-		result.put("statusCode", HttpStatus.OK.value());
-		result.put("data",changedBook.toJson());
-		result.put("message","update book success");
-		return result;
-	}
-	
-	public JsonObject delete(Long bookId) {
-		JsonObject result = new JsonObject();
+    public JsonObject update(Book chkBook) {
+        JsonObject result = new JsonObject();
 
-		bookRepository.delete(bookId);
+        bookRepository.save(chkBook);
 
-		result.put("statusCode", HttpStatus.OK.value());
-		result.put("message","delete book success");
-		return result;
+        Book changedBook = bookRepository.findOne(chkBook.getId());
 
-	}
+        result.put("statusCode", HttpStatus.OK.value());
+        result.put("data", changedBook.toJson());
+        result.put("message", "update book success");
+        return result;
+    }
+
+    public JsonObject delete(Long bookId) {
+        JsonObject result = new JsonObject();
+
+        bookRepository.delete(bookId);
+
+        result.put("statusCode", HttpStatus.OK.value());
+        result.put("message", "delete book success");
+        return result;
+
+    }
 
 }

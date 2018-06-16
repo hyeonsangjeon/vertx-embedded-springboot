@@ -19,51 +19,52 @@ import io.vertx.serviceproxy.ServiceProxyBuilder;
 /**
  * A standard verticle, consuming to multi-thread VertxWorker{@link BookAsyncService} over the event bus.
  * This Vert.x class receives work through {@link RouteHandler}  class instance.
+ *
  * @author hyeonsang jeon
  */
 @Component
-public class VertxFacade extends AbstractVerticle{
-	private static final Logger logger = LoggerFactory.getLogger(VertxFacade.class);
+public class VertxFacade extends AbstractVerticle {
+    private static final Logger logger = LoggerFactory.getLogger(VertxFacade.class);
 
-	private BookAsyncService bookAsyncService;
-	
-	@Override
-    public void start(Future<Void> startFuture) throws Exception {		
-		bookAsyncService = new ServiceProxyBuilder(vertx).setAddress(BookAsyncService.ADDRESS).build(BookAsyncService.class);
-		
-		startServer(
+    private BookAsyncService bookAsyncService;
+
+    @Override
+    public void start(Future<Void> startFuture) throws Exception {
+        bookAsyncService = new ServiceProxyBuilder(vertx).setAddress(BookAsyncService.ADDRESS).build(BookAsyncService.class);
+
+        startServer(
                 (http) -> completeStartup(http, startFuture)
         );
-	}
-	
-	private void startServer(Handler<AsyncResult<HttpServer>> next) {		
-				
-	 	Router apiRouter = Router.router(vertx);
-	 	apiRouter.mountSubRouter("/book", new RouteHandler(vertx, bookAsyncService).getRouter());
-	 	vertx.createHttpServer()
-	 	    .requestHandler(apiRouter::accept)
-	 	        .listen(prop.getInt("vertx.port"), next::handle);
-	}
-	
-	private void completeStartup(AsyncResult<HttpServer> http, Future<Void> future) {
+    }
+
+    private void startServer(Handler<AsyncResult<HttpServer>> next) {
+
+        Router apiRouter = Router.router(vertx);
+        apiRouter.mountSubRouter("/book", new RouteHandler(vertx, bookAsyncService).getRouter());
+        vertx.createHttpServer()
+                .requestHandler(apiRouter::accept)
+                .listen(prop.getInt("vertx.port"), next::handle);
+    }
+
+    private void completeStartup(AsyncResult<HttpServer> http, Future<Void> future) {
         if (http.succeeded()) {
-        		future.complete();
+            future.complete();
         } else {
-        		future.fail(http.cause());
+            future.fail(http.cause());
         }
     }
 
-	//using commons-configuration, let's see pom.xml
-	static String propFileName = "application.properties";
-	static Configuration prop;
+    //using commons-configuration, let's see pom.xml
+    static String propFileName = "application.properties";
+    static Configuration prop;
 
-	static {
-		try {
-			prop = new PropertiesConfiguration(propFileName);
-		} catch (ConfigurationException e) {
-			logger.error("VertxFacade",e);
-		}
-	}
-	
+    static {
+        try {
+            prop = new PropertiesConfiguration(propFileName);
+        } catch (ConfigurationException e) {
+            logger.error("VertxFacade", e);
+        }
+    }
+
 }
 
