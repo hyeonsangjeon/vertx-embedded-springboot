@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.example</groupId>
     <artifactId>vertx-embeded-springboot</artifactId>
@@ -12,7 +13,7 @@
 
     <parent>
         <groupId>org.springframework.boot</groupId>
-	    <artifactId>spring-boot-starter-parent</artifactId>
+        <artifactId>spring-boot-starter-parent</artifactId>
         <version>1.5.8.RELEASE</version>
     </parent>
 
@@ -23,16 +24,16 @@
     </properties>
 
     <dependencies>
-  	    <!-- vert.x core -->
+        <!-- vert.x core -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-core</artifactId>
             <version>${vertx.version}</version>
         </dependency>
-	    <!-- Spring init example for jpa DB -->
+        <!-- Spring init example for jpa DB -->
         <dependency>
-  		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <!-- Spring Actuator dependency-->
         <dependency>
@@ -52,41 +53,41 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
-	    <!-- vert.x web -->
+        <!-- vert.x web -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-web</artifactId>
             <version>${vertx.version}</version>
         </dependency>
-	    <!-- vert.x async proxy handler -->
+        <!-- vert.x async proxy handler -->
         <dependency>
             <groupId>io.vertx</groupId>
-	  	    <artifactId>vertx-service-proxy</artifactId>
-	  	    <version>${vertx.version}</version>
-	    </dependency>
-	    <!-- vert.x code generator -->
-	    <dependency>
-      	    <groupId>io.vertx</groupId>
-  	  	    <artifactId>vertx-codegen</artifactId>
-      	    <version>${vertx.version}</version>
-      	    <scope>provided</scope>
+            <artifactId>vertx-service-proxy</artifactId>
+            <version>${vertx.version}</version>
         </dependency>
-    	<!-- Spring Actuator for liquibase -->
+        <!-- vert.x code generator -->
         <dependency>
-			<groupId>org.liquibase</groupId>
-			<artifactId>liquibase-core</artifactId>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-codegen</artifactId>
+            <version>${vertx.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Spring Actuator for liquibase -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
-	    <dependency>
-    		<groupId>com.google.code.gson</groupId>
-    		<artifactId>gson</artifactId>
-    	</dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
         <!-- Utility -->
         <!--<dependency>-->
-	        <!--<groupId>org.projectlombok</groupId>-->
-		    <!--<artifactId>lombok</artifactId>-->
-            <!--<version>1.18.0</version>-->
-            <!--<scope>provided</scope>-->
+        <!--<groupId>org.projectlombok</groupId>-->
+        <!--<artifactId>lombok</artifactId>-->
+        <!--<version>1.18.0</version>-->
+        <!--<scope>provided</scope>-->
         <!--</dependency>-->
         <dependency>
             <groupId>junit</groupId>
@@ -99,11 +100,11 @@
             <artifactId>mysql-connector-java</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- Spring Actuator for Web Monitoring -->  
-	    <dependency>
-	        <groupId>org.springframework.boot</groupId>
-	        <artifactId>spring-boot-starter-web</artifactId>
-	    </dependency>
+        <!-- Spring Actuator for Web Monitoring -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/commons-configuration/commons-configuration -->
         <dependency>
             <groupId>commons-configuration</groupId>
@@ -113,43 +114,43 @@
     </dependencies>
 
     <build>
-      <!-- dividing profiles -->
+        <!-- dividing profiles -->
         <resources>
-          <resource>
-              <directory>src/main/resources</directory>
-              <excludes>
-                  <exclude>profiles/**</exclude>
-              </excludes>
-          </resource>
-          <resource>
-              <directory>src/main/resources/profiles/${env}</directory>
-          </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>profiles/**</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <directory>src/main/resources/profiles/${env}</directory>
+            </resource>
         </resources>
         <pluginManagement>
-        <plugins>
-        <!-- We specify the Maven compiler plugin as we need to set it to Java 1.8 -->
-          <plugin>
-              <artifactId>maven-compiler-plugin</artifactId>
-              <version>3.1</version>
-              <configuration>
-                  <source>${java.version}</source>
-                  <target>${java.version}</target>
-                  <annotationProcessors>
-                      <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
-                  </annotationProcessors>
-                  <compilerArgs>
-                      <arg>-AoutputDirectory=${project.basedir}/src/main</arg>
-                  </compilerArgs>
-              </configuration>
-          </plugin>
-        </plugins>
+            <plugins>
+                <!-- We specify the Maven compiler plugin as we need to set it to Java 1.8 -->
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.1</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <annotationProcessors>
+                            <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
+                        </annotationProcessors>
+                        <compilerArgs>
+                            <arg>-AoutputDirectory=${project.basedir}/src/main</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+            </plugins>
         </pluginManagement>
         <plugins>
-          <plugin>
-              <groupId>org.springframework.boot</groupId>
-              <artifactId>spring-boot-maven-plugin</artifactId>
-              <version>1.5.8.RELEASE</version>
-          </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>1.5.8.RELEASE</version>
+            </plugin>
         </plugins>
     </build>
     <profiles>
