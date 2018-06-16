@@ -1,24 +1,13 @@
 package com.vertx.worker.mvc.handler;
 
 import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-
-
-import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpServerResponse;
 import org.springframework.stereotype.Component;
-
-import com.google.gson.Gson;
 import com.vertx.worker.mvc.dto.Book;
 import com.vertx.worker.mvc.service.BookAsyncService;
-
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
-import static java.net.HttpURLConnection.*;
-
 
 /**
  * Facade sender class, sending to {@link BookAsyncService} requested Object.
@@ -26,25 +15,23 @@ import static java.net.HttpURLConnection.*;
  */
 @Component
 public class RequestHandler {
-	
+
 	public RequestHandler(BookAsyncService bookAsyncService) {
 		this.bookAsyncService = bookAsyncService;
 	}
-		
+
 	private BookAsyncService bookAsyncService;
-	
-		
+
 	//Create Book
 	public void createBook(RoutingContext routingContext) {
-
         JsonObject reqParam  = routingContext.getBodyAsJson();
 
 		bookAsyncService.save(reqParam, ar -> {
 		    if (ar.succeeded()) {
-				JsonObject result = ar.result();
-				this.sendResult(routingContext.response(),result);
+		    	JsonObject result = ar.result();
+		    	this.sendResult(routingContext.response(),result);
 		    } else {
-		        routingContext.fail(ar.cause());
+		    	routingContext.fail(ar.cause());
 		    }
 		});
 	}
