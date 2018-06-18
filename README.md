@@ -41,11 +41,37 @@ http://localhost:7979/actuator
 http://localhost:7979/actuator/liquibase
 ```
 
-##### 
-  
+##### To try request rest api
+In console log, you can see different worker thread works in concrete class instance works as [worker-thread-0] ~ [worker-thread-8]
  
+- book list search
+```console
+curl --request GET --url http://localhost:8989/book/list
+``` 
+
+- book add 
+```console
+curl -X POST http://localhost:8989/book/add   
+-d '{
+  "name":"marble comics",
+  "author":"marble",
+  "pages":987
+}'
+``` 
+
+-  book search one 
+```console
+curl -X GET http://localhost:8989/book/id/1
+```
+
+- book delete   
+```console
+curl -X DELETE http://localhost:8989/book/delete/2
+```
 
 ## Reference
+1. https://vertx.io/docs/vertx-core/java/
+2. https://github.com/vert-x3/
 
 
 
