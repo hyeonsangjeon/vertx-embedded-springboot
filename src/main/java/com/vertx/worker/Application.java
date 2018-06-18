@@ -46,6 +46,7 @@ public class Application {
     @Value("${vertx.worker.pool.size}")
     int workerPoolSize;
 
+
     /**
      * The number of {@link VertxWorker} instances to deploy, configured in the {@code application.properties} file.
      */

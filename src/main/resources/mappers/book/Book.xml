@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="example.mappers.Book">
+
+
+    <!-- ##### unit test ##### -->
+    <select id="getCurrentTime" resultType="String">
+		SELECT NOW() 
+	</select>
+
+    <!-- ##### BookList search ##### -->
+    <select id="selectBookOne" parameterType="Long" resultType="com.vertx.worker.mvc.dto.Book" fetchSize="50">
+        SELECT  ID     AS "id"
+               ,NAME   AS  "name"
+               ,AUTHOR AS "author"
+               ,PAGES  AS "pages"
+        FROM book
+        WHERE ID = #{id}
+    </select>
+
+</mapper>

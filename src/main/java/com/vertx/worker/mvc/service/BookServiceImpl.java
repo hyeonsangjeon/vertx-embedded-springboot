@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.stream.StreamSupport;
 
 import com.google.gson.Gson;
+import com.vertx.worker.mvc.dao.BookDao;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ import com.vertx.worker.mvc.repository.BookRepository;
 @Service
 @Transactional
 public class BookServiceImpl {
+
+    @Autowired
+    BookDao bookDao;
 
     @Autowired
     BookRepository bookRepository;
@@ -57,8 +61,11 @@ public class BookServiceImpl {
 
     public JsonObject get(Long bookId) {
         JsonObject result = new JsonObject();
-        Book book = bookRepository.findOne(bookId);
+        //JPA VERSION
+        //Book book = bookRepository.findOne(bookId);
 
+        // Mybatis
+        Book book =bookDao.selectBookOne(bookId);
 
         if (book != null) {
             result.put("statusCode", HttpStatus.OK.value());
