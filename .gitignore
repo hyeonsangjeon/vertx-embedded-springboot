@@ -24,6 +24,7 @@ target/
 .idea/
 *.iml
 *.py
+.venv/
 
 # External tool builders
 .externalToolBuilders/
