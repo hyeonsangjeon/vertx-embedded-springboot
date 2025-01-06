@@ -23,7 +23,7 @@ target/
 .vertx/
 .idea/
 *.iml
-
+*.py
 
 # External tool builders
 .externalToolBuilders/
