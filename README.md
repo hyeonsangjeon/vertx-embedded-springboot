@@ -29,6 +29,13 @@ HTTP Request → VertxFacade → RouteHandler → RequestHandler
 - **Event Bus**: Routes async messages between facade and worker verticles
 - **Spring Integration**: SpringVerticleFactory enables verticles as Spring beans
 
+<details>
+<summary>Click to view detailed architecture flow diagram</summary>
+
+![Architecture Flow Map](flow_map.png)
+
+</details>
+
 ## Quick Start
 
 ### Prerequisites
