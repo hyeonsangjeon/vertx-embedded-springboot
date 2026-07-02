@@ -11,6 +11,8 @@
 
 ![Vert.x event loop animated hero](docs/event-loop-hero.gif)
 
+> Modernized and polished with **OpenAI Codex** as an AI coding collaborator. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
+
 This repository is a compact reference implementation of a practical async boundary:
 
 ```text
@@ -291,7 +293,7 @@ The editable source is `docs/social-preview.svg`. Upload the PNG in the GitHub r
 
 ## Contributors
 
-See [CONTRIBUTORS.md](CONTRIBUTORS.md).
+Built and maintained by Hyeonsang Jeon, with OpenAI Codex acknowledged as an AI coding collaborator for the modernization pass. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 ## References
 

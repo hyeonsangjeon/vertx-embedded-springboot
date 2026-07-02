@@ -2,6 +2,8 @@
 
 This repository carries an async worker pattern originally authored and maintained by Hyeonsang Jeon.
 
+The 2026 modernization pass was developed collaboratively with OpenAI Codex.
+
 ## People
 
 - **Hyeonsang Jeon** - original author and maintainer.
