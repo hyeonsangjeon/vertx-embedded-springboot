@@ -289,6 +289,10 @@ The editable source is `docs/social-preview.svg`. Upload the PNG in the GitHub r
 - The reindex job simulates long-running work so the event-loop handoff and worker progress are easy to observe.
 - The repository keeps the pattern small on purpose: the goal is to show the async boundary clearly.
 
+## Contributors
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md).
+
 ## References
 
 - [Vert.x Core Documentation](https://vertx.io/docs/vertx-core/java/)
