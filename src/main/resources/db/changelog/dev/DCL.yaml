@@ -7,9 +7,6 @@ databaseChangeLog:
                 tableName: book
                 columns:
                     - column:
-                        name: id
-                        value: null
-                    - column:
                         name: name
                         value: 'Disparity based space variant image deblurring, Signal Processing: Image Communication'
                     - column:

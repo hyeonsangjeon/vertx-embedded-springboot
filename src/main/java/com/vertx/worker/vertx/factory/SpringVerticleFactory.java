@@ -15,11 +15,12 @@
  */
 
 package com.vertx.worker.vertx.factory;
+import java.util.concurrent.Callable;
+
+import io.vertx.core.Promise;
 import io.vertx.core.Verticle;
 import io.vertx.core.spi.VerticleFactory;
-import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,15 +30,12 @@ import org.springframework.stereotype.Component;
  * @author Thomas Segismont
  */
 @Component
-public class SpringVerticleFactory implements VerticleFactory, ApplicationContextAware {
+public class SpringVerticleFactory implements VerticleFactory {
 
-  private ApplicationContext applicationContext;
+  private final ApplicationContext applicationContext;
 
-  @Override
-  public boolean blockingCreate() {
-    // Usually verticle instantiation is fast but since our verticles are Spring Beans,
-    // they might depend on other beans/resources which are slow to build/lookup.
-    return true;
+  public SpringVerticleFactory(ApplicationContext applicationContext) {
+    this.applicationContext = applicationContext;
   }
 
   @Override
@@ -47,14 +45,14 @@ public class SpringVerticleFactory implements VerticleFactory, ApplicationContex
   }
 
   @Override
-  public Verticle createVerticle(String verticleName, ClassLoader classLoader) throws Exception {
-    // Our convention in this example is to give the class name as verticle name
-    String clazz = VerticleFactory.removePrefix(verticleName);
-    return (Verticle) applicationContext.getBean(Class.forName(clazz));
-  }
-
-  @Override
-  public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-    this.applicationContext = applicationContext;
+  public void createVerticle(String verticleName, ClassLoader classLoader,
+                             Promise<Callable<Verticle>> promise) {
+    String className = VerticleFactory.removePrefix(verticleName);
+    try {
+      Class<?> verticleClass = classLoader.loadClass(className);
+      promise.complete(() -> (Verticle) applicationContext.getBean(verticleClass));
+    } catch (ClassNotFoundException e) {
+      promise.fail(e);
+    }
   }
 }

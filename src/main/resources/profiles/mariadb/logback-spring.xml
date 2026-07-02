@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <include resource="org/springframework/boot/logging/logback/base.xml"/>                              <!-- Log file directory settings -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>                          <!-- Log file directory settings -->
     <property name="LOG_DIR" value="log_data/"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">                                 <!-- For console log settings -->
@@ -34,7 +34,7 @@
     <logger name="jdbc.connection" level="OFF"/>
 
     <root level="INFO">                                                                                    <!--[EXEC] root level : application.properties, logger> Sets a common root log level that has not been custom-tuned to level. -->
-        <!-- <appender-ref ref="STDOUT" /> -->
+        <appender-ref ref="STDOUT"/>
         <appender-ref ref="dailyRollingFileAppender"/>
     </root>
 </configuration>

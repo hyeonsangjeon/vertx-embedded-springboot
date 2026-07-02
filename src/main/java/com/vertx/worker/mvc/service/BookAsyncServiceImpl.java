@@ -1,12 +1,14 @@
 package com.vertx.worker.mvc.service;
 
+import com.vertx.worker.monitor.EventLoopMonitor;
 import io.vertx.core.json.JsonObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.vertx.worker.mvc.dto.Book;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+
+import java.util.function.Supplier;
 
 /**
  * Implements the {@link BookAsyncService}, delegating calls to the transactional {@link BookServiceImpl}.
@@ -16,40 +18,49 @@ import io.vertx.core.Handler;
 @Component
 public class BookAsyncServiceImpl implements BookAsyncService {
 
-    @Autowired
-    BookServiceImpl bookServiceImpl;
+    private final BookServiceImpl bookService;
+    private final EventLoopMonitor monitor;
 
-    @Override
-    public void save(JsonObject reqParam, Handler<AsyncResult<JsonObject>> resultHandler) {
-        JsonObject res = bookServiceImpl.save(reqParam);
-        Future.succeededFuture(res).setHandler(resultHandler);
+    public BookAsyncServiceImpl(BookServiceImpl bookService, EventLoopMonitor monitor) {
+        this.bookService = bookService;
+        this.monitor = monitor;
     }
 
     @Override
-    public void getAll(Handler<AsyncResult<JsonObject>> resultHandler) {
-        JsonObject res = bookServiceImpl.getAll();
-        Future.succeededFuture(res).setHandler(resultHandler);
+    public void save(JsonObject reqParam, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
+        complete(trace, "book.save", resultHandler, () -> bookService.save(reqParam));
     }
 
     @Override
-    public void get(Long bookId, Handler<AsyncResult<JsonObject>> resultHandler) {
-
-        JsonObject res = bookServiceImpl.get(bookId);
-        Future.succeededFuture(res).setHandler(resultHandler);
+    public void getAll(JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
+        complete(trace, "book.list", resultHandler, bookService::getAll);
     }
 
     @Override
-    public void update(Book book, Handler<AsyncResult<JsonObject>> resultHandler) {
-        JsonObject res = bookServiceImpl.update(book);
-        Future.succeededFuture(res).setHandler(resultHandler);
+    public void get(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
+        complete(trace, "book.get", resultHandler, () -> bookService.get(bookId));
     }
 
     @Override
-    public void delete(Long bookId, Handler<AsyncResult<JsonObject>> resultHandler) {
-
-        JsonObject del = bookServiceImpl.delete(bookId);
-        Future.succeededFuture(del).setHandler(resultHandler);
+    public void update(Book book, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
+        complete(trace, "book.update", resultHandler, () -> bookService.update(book));
     }
 
+    @Override
+    public void delete(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
+        complete(trace, "book.delete", resultHandler, () -> bookService.delete(bookId));
+    }
 
+    private void complete(JsonObject trace, String step, Handler<AsyncResult<JsonObject>> resultHandler,
+                          Supplier<JsonObject> action) {
+        monitor.workerStarted(trace, step);
+        try {
+            JsonObject result = action.get();
+            monitor.workerCompleted(trace, step);
+            resultHandler.handle(Future.succeededFuture(result));
+        } catch (Exception e) {
+            monitor.workerFailed(trace, step, e);
+            resultHandler.handle(Future.failedFuture(e));
+        }
+    }
 }

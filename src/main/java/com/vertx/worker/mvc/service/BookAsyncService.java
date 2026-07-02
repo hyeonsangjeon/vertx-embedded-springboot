@@ -15,13 +15,13 @@ import io.vertx.core.json.JsonObject;
 public interface BookAsyncService {
     String ADDRESS = BookAsyncService.class.getName();
 
-    void save(JsonObject reqParam, Handler<AsyncResult<JsonObject>> resultHandler);
+    void save(JsonObject reqParam, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
 
-    void getAll(Handler<AsyncResult<JsonObject>> resultHandler);
+    void getAll(JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
 
-    void get(Long bookId, Handler<AsyncResult<JsonObject>> resultHandler);
+    void get(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
 
-    void update(Book reqParam, Handler<AsyncResult<JsonObject>> resultHandler);
+    void update(Book reqParam, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
 
-    void delete(Long bookId, Handler<AsyncResult<JsonObject>> resultHandler);
+    void delete(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
 }

@@ -1,0 +1,127 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Vert.x Embedded Spring Boot Async Worker Pattern</title>
+  <desc id="desc">Social preview image for a Vert.x embedded Spring Boot async worker pattern repository.</desc>
+
+  <defs>
+    <radialGradient id="bg" cx="52%" cy="40%" r="78%">
+      <stop offset="0%" stop-color="#132542"/>
+      <stop offset="48%" stop-color="#0b1220"/>
+      <stop offset="100%" stop-color="#050914"/>
+    </radialGradient>
+    <radialGradient id="loopGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7dd3fc" stop-opacity="0.36"/>
+      <stop offset="58%" stop-color="#8b5cf6" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#60a5fa"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#a3e635"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#fb7185"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#020617" flood-opacity="0.5"/>
+    </filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      .title { font-family: Arial, Helvetica, sans-serif; font-weight: 800; font-size: 58px; fill: #f8fafc; letter-spacing: -0.5px; }
+      .subtitle { font-family: Arial, Helvetica, sans-serif; font-weight: 600; font-size: 24px; fill: #cbd5e1; }
+      .small { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 16px; fill: #94a3b8; letter-spacing: 1.2px; }
+      .label { font-family: Arial, Helvetica, sans-serif; font-weight: 800; font-size: 24px; fill: #f8fafc; }
+      .body { font-family: Arial, Helvetica, sans-serif; font-weight: 600; font-size: 17px; fill: #cbd5e1; }
+      .mono { font-family: Menlo, Monaco, Consolas, monospace; font-weight: 700; font-size: 15px; fill: #e2e8f0; }
+      .panel { fill: #08111f; fill-opacity: 0.84; stroke: #334155; stroke-opacity: 0.86; stroke-width: 1.5; }
+      .wire { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 9 12; opacity: 0.9; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="640" fill="#050914"/>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <path d="M0 118H1280M0 236H1280M0 472H1280M144 0V640M288 0V640M432 0V640M576 0V640M720 0V640M864 0V640M1008 0V640M1152 0V640" stroke="#1e293b" stroke-opacity="0.18"/>
+  <circle cx="826" cy="338" r="238" fill="url(#loopGlow)"/>
+
+  <text x="70" y="112" class="title">Async Worker Pattern</text>
+  <text x="72" y="154" class="subtitle">Vert.x embedded in Spring Boot for long-running platform jobs</text>
+
+  <g transform="translate(72 202)">
+    <rect width="474" height="54" rx="27" fill="#020617" fill-opacity="0.58" stroke="#38bdf8" stroke-opacity="0.42"/>
+    <circle cx="28" cy="27" r="8" fill="#34d399" filter="url(#glow)"/>
+    <text x="52" y="33" class="mono">receive fast -> dispatch async -> workers execute</text>
+  </g>
+
+  <g transform="translate(72 300)" filter="url(#shadow)">
+    <rect width="214" height="112" rx="18" class="panel" stroke="#38bdf8"/>
+    <text x="28" y="40" class="small">EVENT LOOP</text>
+    <text x="28" y="75" class="label">202 Accepted</text>
+    <text x="28" y="99" class="body">caller released fast</text>
+  </g>
+
+  <g transform="translate(366 300)" filter="url(#shadow)">
+    <rect width="214" height="112" rx="18" class="panel" stroke="#38bdf8"/>
+    <text x="28" y="40" class="small">EVENT BUS</text>
+    <text x="28" y="75" class="label">Async dispatch</text>
+    <text x="28" y="99" class="body">service proxy + jobs</text>
+  </g>
+
+  <g transform="translate(958 300)" filter="url(#shadow)">
+    <rect width="236" height="112" rx="18" class="panel" stroke="#fbbf24"/>
+    <text x="28" y="40" class="small">OBSERVABILITY</text>
+    <text x="28" y="75" class="label">SSE progress</text>
+    <text x="28" y="99" class="body">status without waiting</text>
+  </g>
+
+  <path d="M286 356 C318 356 334 356 366 356" class="wire" stroke="#7dd3fc"/>
+  <path d="M580 356 C642 356 672 350 724 330" class="wire" stroke="#86efac"/>
+  <path d="M894 360 C920 356 934 356 958 356" class="wire" stroke="#fbbf24"/>
+
+  <g>
+    <circle cx="810" cy="338" r="112" fill="#08111f" fill-opacity="0.88" stroke="#6366f1" stroke-opacity="0.55" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="810" cy="338" r="84" fill="none" stroke="#a78bfa" stroke-opacity="0.46" stroke-width="2"/>
+    <path d="M810 226 A112 112 0 0 1 920 322" fill="none" stroke="#a78bfa" stroke-width="7" stroke-linecap="round"/>
+    <path d="M810 450 A112 112 0 0 1 707 377" fill="none" stroke="#38bdf8" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="810" cy="254" r="7" fill="#a78bfa" filter="url(#glow)"/>
+    <circle cx="894" cy="338" r="7" fill="#67e8f9" filter="url(#glow)"/>
+    <circle cx="810" cy="422" r="7" fill="#86efac" filter="url(#glow)"/>
+    <text x="769" y="328" class="small">EVENT</text>
+    <text x="775" y="356" class="small">LOOP</text>
+  </g>
+
+  <g transform="translate(692 478)">
+    <text x="0" y="0" class="small" fill="#fbbf24">WORKER THREADS</text>
+    <g transform="translate(30 34)">
+      <circle cx="0" cy="0" r="21" fill="#3f2a11" stroke="#fbbf24" stroke-width="3"/>
+      <circle cx="0" cy="0" r="9" fill="#fbbf24"/>
+      <circle cx="62" cy="0" r="21" fill="#3f2a11" stroke="#fbbf24" stroke-width="3"/>
+      <circle cx="62" cy="0" r="9" fill="#fbbf24"/>
+      <circle cx="124" cy="0" r="21" fill="#3f2a11" stroke="#fbbf24" stroke-width="3"/>
+      <circle cx="124" cy="0" r="9" fill="#fbbf24"/>
+      <circle cx="186" cy="0" r="21" fill="#3f2a11" stroke="#fbbf24" stroke-width="3"/>
+      <circle cx="186" cy="0" r="9" fill="#fbbf24"/>
+    </g>
+  </g>
+
+  <g transform="translate(72 522)">
+    <rect width="414" height="48" rx="24" fill="#082f49" fill-opacity="0.48" stroke="#38bdf8" stroke-opacity="0.5"/>
+    <text x="30" y="31" class="small">EVENT LOOP: ROUTE + ACCEPT</text>
+  </g>
+  <g transform="translate(506 522)">
+    <rect width="340" height="48" rx="24" fill="#052e16" fill-opacity="0.48" stroke="#34d399" stroke-opacity="0.48"/>
+    <text x="46" y="31" class="small">WORKER: BLOCKING WORK</text>
+  </g>
+  <g transform="translate(868 522)">
+    <rect width="332" height="48" rx="24" fill="#422006" fill-opacity="0.48" stroke="#fbbf24" stroke-opacity="0.48"/>
+    <text x="48" y="31" class="small">CLIENT: STATUS + SSE</text>
+  </g>
+</svg>

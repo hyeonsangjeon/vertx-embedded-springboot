@@ -1,10 +1,10 @@
 package com.vertx.worker.mvc.dto;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
-import com.google.gson.Gson;
 import io.vertx.codegen.annotations.DataObject;
 import io.vertx.core.json.JsonObject;
 
@@ -15,7 +15,7 @@ public class Book {
     private static final long serialVersionUID = 8203836758273948712L;
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name = "";
@@ -30,13 +30,19 @@ public class Book {
     // Mandatory for data objects DTO parsing
     public Book(JsonObject jsonObject) {
         this.id = jsonObject.getLong("id");
-        this.name = jsonObject.getString("name");
-        this.author = jsonObject.getString("author");
-        this.pages = jsonObject.getInteger("pages");
+        this.name = jsonObject.getString("name", "");
+        this.author = jsonObject.getString("author", "");
+        this.pages = jsonObject.getInteger("pages", 0);
     }
 
     public JsonObject toJson() {
-        JsonObject json = new JsonObject(new Gson().toJson(this));
+        JsonObject json = new JsonObject()
+                .put("name", name)
+                .put("author", author)
+                .put("pages", pages);
+        if (id != null) {
+            json.put("id", id);
+        }
         return json;
     }
 

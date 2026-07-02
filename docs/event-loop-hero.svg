@@ -1,0 +1,220 @@
+<svg width="1280" height="560" viewBox="0 0 1280 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Vert.x Event Loop Animated Worker Pattern</title>
+  <desc id="desc">Animated hero showing an event loop accepting HTTP work, dispatching through the event bus, executing on worker threads, and publishing SSE progress.</desc>
+
+  <defs>
+    <radialGradient id="heroBg" cx="50%" cy="42%" r="74%">
+      <stop offset="0%" stop-color="#122038"/>
+      <stop offset="46%" stop-color="#080f1d"/>
+      <stop offset="100%" stop-color="#050914"/>
+    </radialGradient>
+    <radialGradient id="loopGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.46"/>
+      <stop offset="62%" stop-color="#0ea5e9" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cyanLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#93c5fd" stop-opacity="0.12"/>
+      <stop offset="46%" stop-color="#67e8f9"/>
+      <stop offset="100%" stop-color="#93c5fd" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="greenLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#86efac" stop-opacity="0.12"/>
+      <stop offset="50%" stop-color="#86efac"/>
+      <stop offset="100%" stop-color="#86efac" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="amberLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.12"/>
+      <stop offset="52%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#fb7185" stop-opacity="0.22"/>
+    </linearGradient>
+    <filter id="glowCyan" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#020617" flood-opacity="0.48"/>
+    </filter>
+    <path id="requestPath" d="M248 286 C340 286 386 276 484 276"/>
+    <path id="dispatchPath" d="M590 276 C684 276 714 276 792 276"/>
+    <path id="workerPathA" d="M620 314 C674 378 730 421 806 432"/>
+    <path id="workerPathB" d="M630 242 C696 218 746 188 796 140"/>
+    <path id="callbackPath" d="M806 432 C730 416 664 356 592 300"/>
+    <style>
+      .titleText { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 38px; fill: #f8fafc; letter-spacing: 0.2px; }
+      .titleAccent { fill: #7dd3fc; }
+      .subtitle { font-family: Arial, Helvetica, sans-serif; font-weight: 600; font-size: 13px; fill: #94a3b8; letter-spacing: 1.2px; }
+      .cardTitle { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 13px; fill: #cbd5e1; letter-spacing: 1px; }
+      .cardValue { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 20px; fill: #f8fafc; }
+      .small { font-family: Arial, Helvetica, sans-serif; font-weight: 600; font-size: 12px; fill: #94a3b8; }
+      .tiny { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 10px; fill: #94a3b8; letter-spacing: 1px; }
+      .mono { font-family: Menlo, Monaco, Consolas, monospace; font-weight: 700; font-size: 11px; fill: #e2e8f0; }
+      .panel { fill: #08111f; fill-opacity: 0.78; stroke: #334155; stroke-opacity: 0.82; stroke-width: 1.2; }
+      .panelCyan { stroke: #67e8f9; stroke-opacity: 0.42; }
+      .panelGreen { stroke: #86efac; stroke-opacity: 0.38; }
+      .panelAmber { stroke: #fbbf24; stroke-opacity: 0.42; }
+      .wireCyan { fill: none; stroke: url(#cyanLine); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 5 10; animation: dash 3s linear infinite; }
+      .wireGreen { fill: none; stroke: url(#greenLine); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 5 10; animation: dash 3.4s linear infinite; }
+      .wireAmber { fill: none; stroke: url(#amberLine); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 5 10; animation: dash 3.8s linear infinite; }
+      .loopSpin { transform-origin: 548px 276px; animation: spin 5.6s linear infinite; }
+      .loopSpinSlow { transform-origin: 548px 276px; animation: spinReverse 8s linear infinite; }
+      .pulse { animation: pulse 2.2s ease-in-out infinite; }
+      .blink { animation: blink 1.8s ease-in-out infinite; }
+      .workerPulse1 { animation: workerPulse 2.8s ease-in-out infinite; }
+      .workerPulse2 { animation: workerPulse 2.8s ease-in-out 0.45s infinite; }
+      .workerPulse3 { animation: workerPulse 2.8s ease-in-out 0.9s infinite; }
+      .workerPulse4 { animation: workerPulse 2.8s ease-in-out 1.35s infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes spinReverse { to { transform: rotate(-360deg); } }
+      @keyframes dash { to { stroke-dashoffset: -60; } }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.72; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.035); }
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 0.38; }
+        45%, 65% { opacity: 1; }
+      }
+      @keyframes workerPulse {
+        0%, 100% { opacity: 0.42; }
+        45%, 60% { opacity: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .wireCyan, .wireGreen, .wireAmber, .loopSpin, .loopSpinSlow, .pulse, .blink,
+        .workerPulse1, .workerPulse2, .workerPulse3, .workerPulse4 { animation: none; }
+      }
+    </style>
+  </defs>
+
+  <rect width="1280" height="560" fill="#050914"/>
+  <rect width="1280" height="560" rx="28" fill="url(#heroBg)"/>
+  <path d="M0 95H1280M0 190H1280M0 390H1280M126 0V560M262 0V560M398 0V560M534 0V560M670 0V560M806 0V560M942 0V560M1078 0V560" stroke="#1e293b" stroke-opacity="0.18"/>
+  <circle cx="548" cy="276" r="210" fill="url(#loopGlow)"/>
+
+  <text x="360" y="58" class="titleText">The Event Loop <tspan class="titleAccent">Vert.x</tspan></text>
+  <text x="474" y="84" class="subtitle">EVENT LOOP ACCEPTS. WORKERS EXECUTE.</text>
+
+  <g transform="translate(56 107)" filter="url(#shadow)" class="pulse">
+    <rect width="286" height="36" rx="18" class="panel panelCyan"/>
+    <circle cx="22" cy="18" r="5" fill="#a78bfa" filter="url(#glowCyan)"/>
+    <text x="38" y="22" class="mono">JOB ACCEPTED 202</text>
+    <text x="172" y="22" class="small">event loop returned fast</text>
+  </g>
+
+  <g transform="translate(82 212)" filter="url(#shadow)">
+    <rect width="164" height="148" rx="16" class="panel panelCyan"/>
+    <text x="26" y="40" class="cardTitle">REQUEST QUEUE</text>
+    <rect x="34" y="68" width="96" height="48" rx="10" fill="#020617" fill-opacity="0.66" stroke="#475569"/>
+    <circle cx="50" cy="92" r="4" fill="#67e8f9" class="blink"/>
+    <text x="64" y="96" class="mono">HTTP job</text>
+  </g>
+
+  <g transform="translate(370 154)" filter="url(#shadow)">
+    <rect width="144" height="62" rx="14" class="panel panelGreen"/>
+    <text x="27" y="25" class="tiny">RESPONSE TIME</text>
+    <text x="43" y="50" class="cardValue">12 ms</text>
+  </g>
+
+  <g transform="translate(766 146)" filter="url(#shadow)">
+    <rect width="174" height="72" rx="14" class="panel panelGreen"/>
+    <text x="44" y="28" class="tiny">EVENT BUS</text>
+    <text x="30" y="52" class="mono">BookReindexJobWorker</text>
+  </g>
+
+  <g transform="translate(990 204)" filter="url(#shadow)">
+    <rect width="162" height="156" rx="16" class="panel panelGreen"/>
+    <text x="44" y="40" class="cardTitle">CALL STACK</text>
+    <rect x="44" y="72" width="74" height="28" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.55"/>
+    <text x="59" y="91" class="mono">main()</text>
+    <rect x="44" y="108" width="74" height="28" rx="8" fill="#0f172a" stroke="#86efac" stroke-opacity="0.55"/>
+    <text x="55" y="127" class="mono">callback</text>
+    <text x="58" y="148" class="tiny">1 THREAD</text>
+  </g>
+
+  <path d="M248 286 C340 286 386 276 484 276" class="wireCyan"/>
+  <path d="M590 276 C684 276 714 276 792 276" class="wireGreen"/>
+  <path d="M620 314 C674 378 730 421 806 432" class="wireAmber"/>
+  <path d="M630 242 C696 218 746 188 796 140" class="wireGreen"/>
+  <path d="M806 432 C730 416 664 356 592 300" class="wireCyan" opacity="0.58"/>
+
+  <g>
+    <circle r="5" fill="#7dd3fc" filter="url(#glowCyan)">
+      <animateMotion dur="3.2s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear">
+        <mpath href="#requestPath"/>
+      </animateMotion>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.84;1" dur="3.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="5" fill="#86efac" filter="url(#glowCyan)">
+      <animateMotion dur="3.2s" begin="0.7s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear">
+        <mpath href="#dispatchPath"/>
+      </animateMotion>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.84;1" dur="3.2s" begin="0.7s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="5" fill="#fbbf24" filter="url(#glowCyan)">
+      <animateMotion dur="3.4s" begin="1.1s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear">
+        <mpath href="#workerPathA"/>
+      </animateMotion>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.84;1" dur="3.4s" begin="1.1s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="5" fill="#86efac" filter="url(#glowCyan)">
+      <animateMotion dur="3.4s" begin="1.5s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear">
+        <mpath href="#workerPathB"/>
+      </animateMotion>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.84;1" dur="3.4s" begin="1.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <g>
+    <circle cx="548" cy="276" r="74" fill="#0b1020" fill-opacity="0.92" stroke="#6366f1" stroke-opacity="0.45" stroke-width="2"/>
+    <circle cx="548" cy="276" r="58" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-opacity="0.38"/>
+    <circle cx="548" cy="276" r="88" fill="none" stroke="#60a5fa" stroke-opacity="0.2" stroke-width="1"/>
+    <g class="loopSpin">
+      <path d="M548 188 A88 88 0 0 1 635 262" fill="none" stroke="#a78bfa" stroke-width="4" stroke-linecap="round"/>
+      <path d="M548 364 A88 88 0 0 1 466 305" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g class="loopSpinSlow">
+      <circle cx="548" cy="218" r="4" fill="#a78bfa" filter="url(#glowCyan)"/>
+      <circle cx="606" cy="276" r="4" fill="#67e8f9" filter="url(#glowCyan)"/>
+      <circle cx="548" cy="334" r="4" fill="#86efac" filter="url(#glowCyan)"/>
+    </g>
+    <text x="517" y="270" class="tiny">EVENT</text>
+    <text x="523" y="288" class="tiny">LOOP</text>
+  </g>
+
+  <g transform="translate(760 406)">
+    <text x="0" y="50" class="cardTitle" fill="#fbbf24">WORKER THREADS</text>
+    <g transform="translate(26 6)">
+      <circle cx="0" cy="0" r="16" fill="#3f2a11" stroke="#fbbf24" stroke-width="2" class="workerPulse1"/>
+      <circle cx="0" cy="0" r="7" fill="#fbbf24" class="workerPulse1"/>
+      <circle cx="46" cy="0" r="16" fill="#3f2a11" stroke="#fbbf24" stroke-width="2" class="workerPulse2"/>
+      <circle cx="46" cy="0" r="7" fill="#fbbf24" class="workerPulse2"/>
+      <circle cx="92" cy="0" r="16" fill="#3f2a11" stroke="#fbbf24" stroke-width="2" class="workerPulse3"/>
+      <circle cx="92" cy="0" r="7" fill="#fbbf24" class="workerPulse3"/>
+      <circle cx="138" cy="0" r="16" fill="#3f2a11" stroke="#fbbf24" stroke-width="2" class="workerPulse4"/>
+      <circle cx="138" cy="0" r="7" fill="#fbbf24" class="workerPulse4"/>
+    </g>
+  </g>
+
+  <g transform="translate(118 456)" filter="url(#shadow)">
+    <rect width="1044" height="52" rx="16" class="panel"/>
+    <g transform="translate(24 11)">
+      <text x="0" y="12" class="tiny">EVENT LOOP</text>
+      <text x="0" y="34" class="cardValue" font-size="16">accepted</text>
+    </g>
+    <g transform="translate(258 11)">
+      <text x="0" y="12" class="tiny">QUEUE</text>
+      <text x="0" y="34" class="cardValue" font-size="16">0 waiting</text>
+    </g>
+    <g transform="translate(478 11)">
+      <text x="0" y="12" class="tiny">WORKER</text>
+      <text x="0" y="34" class="cardValue" font-size="16">running job</text>
+    </g>
+    <g transform="translate(724 11)">
+      <text x="0" y="12" class="tiny">SSE</text>
+      <text x="0" y="34" class="cardValue" font-size="16">progress emitted</text>
+    </g>
+  </g>
+</svg>

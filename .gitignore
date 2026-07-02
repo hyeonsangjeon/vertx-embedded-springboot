@@ -25,7 +25,6 @@ target/
 *.iml
 *.py
 .venv/
-C*
 
 
 # External tool builders

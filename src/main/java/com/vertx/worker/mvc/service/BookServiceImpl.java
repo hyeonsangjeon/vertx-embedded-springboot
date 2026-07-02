@@ -1,17 +1,8 @@
 package com.vertx.worker.mvc.service;
 
-import static java.util.stream.Collectors.toList;
-
-
-import java.util.List;
-
-import java.util.stream.StreamSupport;
-
-import com.google.gson.Gson;
 import com.vertx.worker.mvc.dao.BookDao;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,15 +16,17 @@ import com.vertx.worker.mvc.repository.BookRepository;
  * @author hyeonsang jeon
  */
 @Service
-@Transactional
 public class BookServiceImpl {
 
-    @Autowired
-    BookDao bookDao;
+    private final BookDao bookDao;
+    private final BookRepository bookRepository;
 
-    @Autowired
-    BookRepository bookRepository;
+    public BookServiceImpl(BookDao bookDao, BookRepository bookRepository) {
+        this.bookDao = bookDao;
+        this.bookRepository = bookRepository;
+    }
 
+    @Transactional
     public JsonObject save(JsonObject reqParam) {
         JsonObject result = new JsonObject();
         Book data = bookRepository.save(new Book(reqParam));
@@ -44,13 +37,11 @@ public class BookServiceImpl {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public JsonObject getAll() {
         JsonObject result = new JsonObject();
-
-        Iterable<Book> all = bookRepository.findAll();
-        List<Book> res = StreamSupport.stream(all.spliterator(), false).collect(toList());
-        Gson gson = new Gson();
-        JsonArray jsonArray = new JsonArray(gson.toJson(res));
+        JsonArray jsonArray = new JsonArray();
+        bookRepository.findAll().forEach(book -> jsonArray.add(book.toJson()));
 
         result.put("statusCode", HttpStatus.OK.value());
         result.put("data", jsonArray);
@@ -59,13 +50,12 @@ public class BookServiceImpl {
     }
 
 
+    @Transactional(readOnly = true)
     public JsonObject get(Long bookId) {
         JsonObject result = new JsonObject();
-        //JPA VERSION
-        //Book book = bookRepository.findOne(bookId);
 
         // Mybatis
-        Book book =bookDao.selectBookOne(bookId);
+        Book book = bookDao.selectBookOne(bookId);
 
         if (book != null) {
             result.put("statusCode", HttpStatus.OK.value());
@@ -80,12 +70,15 @@ public class BookServiceImpl {
         return result;
     }
 
+    @Transactional
     public JsonObject update(Book chkBook) {
         JsonObject result = new JsonObject();
 
         bookRepository.save(chkBook);
 
-        Book changedBook = bookRepository.findOne(chkBook.getId());
+        Book changedBook = bookRepository.findById(chkBook.getId()).orElseThrow(
+                () -> new IllegalStateException("Book not found after update: " + chkBook.getId())
+        );
 
         result.put("statusCode", HttpStatus.OK.value());
         result.put("data", changedBook.toJson());
@@ -93,10 +86,11 @@ public class BookServiceImpl {
         return result;
     }
 
+    @Transactional
     public JsonObject delete(Long bookId) {
         JsonObject result = new JsonObject();
 
-        bookRepository.delete(bookId);
+        bookRepository.deleteById(bookId);
 
         result.put("statusCode", HttpStatus.OK.value());
         result.put("message", "delete book success");
