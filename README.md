@@ -2,170 +2,176 @@
 
 [![CI](https://github.com/hyeonsangjeon/vertx-embedded-springboot/actions/workflows/ci.yml/badge.svg)](https://github.com/hyeonsangjeon/vertx-embedded-springboot/actions/workflows/ci.yml)
 ![Java 17](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
-![Vert.x 4.5.27](https://img.shields.io/badge/Vert.x-4.5.27-782A90?logo=eclipse-vert.x&logoColor=white)
+![Vert.x 5.1.5](https://img.shields.io/badge/Vert.x-5.1.5-782A90?logo=eclipse-vert.x&logoColor=white)
 ![Spring Boot 4.1.0](https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?logo=springboot&logoColor=white)
 ![Maven](https://img.shields.io/badge/build-Maven-C71A36?logo=apachemaven&logoColor=white)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
-> Event-loop based async worker pattern for long-running ML/platform jobs, implemented with Vert.x embedded in Spring Boot.
+> Accept HTTP work on the event loop, return quickly, execute blocking platform work on worker threads, and expose progress.
 
-![Vert.x event loop animated hero](docs/event-loop-hero.gif)
+![Animated Vert.x event loop and worker flow](docs/event-loop-hero.gif)
 
-> Modernized and polished with **OpenAI Codex** as an AI coding collaborator. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
-
-This repository is a compact reference implementation of a practical async boundary:
+This repository is a compact reference implementation of one practical boundary:
 
 ```text
-receive fast -> dispatch asynchronously -> execute off the event loop -> expose progress
+HTTP event loop -> 202 Accepted -> event bus -> worker thread -> observable result
 ```
 
-It is not a microservice showcase. The important idea is smaller and more durable: keep HTTP event-loop work lightweight, move blocking or long-running work to worker threads, and make progress observable without making the caller wait.
+The concrete example rebuilds a book search index. The caller receives a job ID immediately, a worker reads the database and performs deliberately blocking index writes, and the finished index can be queried through a real endpoint. Job status and Server-Sent Events (SSE) make every handoff visible.
 
-## Highlights
+Modernized and polished with **OpenAI Codex** as an AI coding collaborator. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
-- **Event-loop handoff**: Vert.x event-loop threads accept, route, trace, and return quickly.
-- **Worker isolation**: Worker verticles run blocking or long-running platform work.
-- **Event bus dispatch**: Service proxy calls and direct job commands move work off the HTTP path.
-- **Accepted job pattern**: `POST /book/jobs/reindex` returns `202 Accepted` immediately.
-- **Live observability**: `/book/events` streams event-loop, worker, and job lifecycle events over SSE.
-- **Spring integration**: Verticles are Spring-managed components with dependency injection.
-- **Persistence examples**: Spring Data JPA and MyBatis examples run against H2 or MariaDB.
+## Try It in 60 Seconds
 
-## 60-Second Demo
+Requirements: Java 17+ and `curl`. The included Maven Wrapper downloads Maven 3.9.11 on the first run.
 
-Start the app:
+Terminal 1, start the application with the in-memory H2 profile:
 
 ```bash
-mvn clean spring-boot:run -P h2local
+./mvnw spring-boot:run -P h2local
 ```
 
-Open the event stream:
+Terminal 2, run the complete accepted-job walkthrough:
+
+```bash
+./scripts/demo.sh
+```
+
+The script opens the SSE stream, submits a search-index rebuild, waits for the worker lifecycle, and searches the newly published index. No external database, queue, search engine, or `jq` installation is required.
+
+On Windows, use `mvnw.cmd` instead of `./mvnw`.
+
+You can also open [http://localhost:8989](http://localhost:8989) in a browser. The root response lists the next API calls and shows which event-loop thread served it.
+
+If macOS still selects Java 8, switch the current shell first:
+
+```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export PATH="$JAVA_HOME/bin:$PATH"
+```
+
+## What the Demo Proves
+
+The observed lifecycle is intentionally ordered:
+
+```text
+event-loop.received
+job.accepted
+event-loop.completed      <- HTTP 202 has been written
+event-loop.dispatch
+job.started               <- now running on vert.x-worker-thread-*
+job.progress
+job.completed
+```
+
+| Signal | Meaning |
+|---|---|
+| `HTTP/1.1 202 Accepted` | The caller is released with a job ID and `Location` header |
+| `event-loop.completed` before `job.started` | Blocking work does not extend the HTTP request |
+| `job.progress` on `vert.x-worker-thread-*` | Database and index writes are isolated from the event loop |
+| `progressPercent` | Polling clients can render deterministic progress |
+| `GET /book/search?q=...` | The background job produces an observable result |
+
+The per-book delay configured by `demo.reindex.item-delay-ms` stands in for a blocking Elasticsearch, OpenSearch, vector-store, model-registry, or filesystem SDK call. It is deliberately placed in the worker implementation so the event loop remains responsive.
+
+## Architecture
+
+![Vert.x async worker architecture](docs/async-worker-pattern.svg)
+
+The application has two request shapes:
+
+| Shape | Flow |
+|---|---|
+| Request/response service call | Event loop -> service proxy -> worker -> JPA/MyBatis -> event bus reply -> HTTP response |
+| Accepted background job | Event loop -> HTTP 202 -> event bus command -> worker -> job status, SSE, and search index |
+
+The worker consumers are deployed before the HTTP facade. This prevents a startup race where the server could accept traffic before an event-bus handler existed.
+
+## Search-Index Scenario
+
+1. `POST /book/jobs/reindex` creates an in-memory job in `ACCEPTED` state.
+2. Vert.x writes `202 Accepted`, `Location: /book/jobs/{jobId}`, and `Retry-After: 1`.
+3. Only after the response completes, the event loop dispatches a command over the event bus.
+4. A worker verticle reads books through Spring Data JPA and builds search documents.
+5. Progress is published after every document.
+6. The complete immutable index snapshot is published atomically.
+7. Clients poll the job, watch SSE, or query `/book/search`.
+
+This maps directly to platform work such as dataset ingestion, feature materialization, model refresh, report generation, media conversion, or bulk synchronization.
+
+## Manual Walkthrough
+
+Watch lifecycle events:
 
 ```bash
 curl -N http://localhost:8989/book/events
 ```
 
-Submit work from another terminal:
+Submit the job from another terminal:
 
 ```bash
 curl -i -X POST http://localhost:8989/book/jobs/reindex
 ```
 
-What to look for:
+The response returns immediately:
 
-| Signal | Meaning |
-|--------|---------|
-| `HTTP/1.1 202 Accepted` | The event loop accepted the job and released the caller |
-| `event-loop.completed` before `job.started` | The HTTP path finished before the long-running work began |
-| `job.progress` on `vert.x-worker-thread-*` | Blocking work is isolated on the worker pool |
-| `job.completed` | The background job finished and status is observable |
-
-## Pattern
-
-![Vert.x async worker pattern](docs/async-worker-pattern.svg)
-
-The event loop owns the request boundary. It should not own long-running work.
-
-For normal service calls, the result returns through the event bus after a worker finishes the service method. For accepted jobs, the HTTP response returns first, then the job continues on a worker thread while status and SSE events expose progress.
-
-**Core components**
-
-| Component | Role |
-|-----------|------|
-| `VertxFacade` | HTTP/event-loop boundary for routing, tracing, and fast acceptance |
-| `RouteHandler` / `RequestHandler` | Web routes, validation, event-bus dispatch, response formatting |
-| `VertxWorker` | Worker-pool verticle that consumes service calls and job commands |
-| `BookAsyncService` | Vert.x service proxy API for CRUD-style work |
-| `BookReindexJobWorker` | Sample long-running background job worker |
-| `BookJobRegistry` | In-memory job state store for the accepted-job sample |
-| `EventLoopMonitor` | SSE trace publisher for event-loop, worker, and job lifecycle phases |
-
-## Quick Start
-
-### Prerequisites
-
-- Java 17+
-- Maven 3.6.3+
-
-If your machine defaults to Java 8, select Java 17 before running Maven:
-
-```bash
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+```http
+HTTP/1.1 202 Accepted
+Location: /book/jobs/f97f7c86-0581-47b5-bef4-1045f218bb69
+Retry-After: 1
+Content-Type: application/json; charset=utf-8
 ```
-
-Run with the in-memory H2 profile:
-
-```bash
-mvn clean spring-boot:run -P h2local
-```
-
-The app starts:
-
-| Port | Service | Description |
-|------|---------|-------------|
-| `8989` | Vert.x HTTP server | Book API and SSE stream |
-| `7979` | Spring Actuator | Health, metrics, Liquibase details |
-| `9000` | Spring Boot | Internal application port |
-
-Watch for `SpringWorker started` and `Vert.x HTTP server started on port 8989`.
-
-## Accepted Job Details
-
-The background job endpoint:
-
-```bash
-curl -i -X POST http://localhost:8989/book/jobs/reindex
-```
-
-returns immediately:
 
 ```json
 {
   "statusCode": 202,
   "data": {
     "jobId": "f97f7c86-0581-47b5-bef4-1045f218bb69",
-    "type": "book.reindex",
+    "type": "book.search-index.rebuild",
     "status": "ACCEPTED",
     "total": 0,
     "processed": 0,
-    "message": "job accepted"
+    "progressPercent": 0,
+    "links": {
+      "status": "/book/jobs/f97f7c86-0581-47b5-bef4-1045f218bb69",
+      "events": "/book/events",
+      "search": "/book/search?q=Hyeon-Sang"
+    }
   },
-  "message": "job accepted"
+  "message": "search index rebuild accepted"
 }
 ```
 
-Meanwhile, `/book/events` continues with the lifecycle:
-
-```text
-event: event-loop.received
-event: job.accepted
-event: event-loop.dispatch
-event: event-loop.completed
-event: job.started
-event: job.progress
-event: job.completed
-```
-
-Check job status:
+Poll the URL from the `Location` header:
 
 ```bash
 curl http://localhost:8989/book/jobs/{jobId}
 ```
 
+After `status` becomes `COMPLETED`, query the produced index:
+
+```bash
+curl "http://localhost:8989/book/search?q=Hyeon-Sang"
+```
+
+Before the first rebuild, the search endpoint returns an empty index. Rebuilding replaces the entire snapshot, so readers never observe a partially rebuilt index.
+
 ## API
 
-All endpoints are served on `http://localhost:8989/book`.
+Vert.x serves the public API at `http://localhost:8989`.
 
 | Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/list` | List all books |
-| `GET` | `/id/{bookId}` | Get one book |
-| `POST` | `/add` | Create a book |
-| `PUT` | `/update` | Update a book |
-| `DELETE` | `/delete/{bookId}` | Delete a book |
-| `GET` | `/events` | SSE event-loop and worker trace |
-| `POST` | `/jobs/reindex` | Accept a background reindex job |
-| `GET` | `/jobs/{jobId}` | Read background job status |
+|---|---|---|
+| `GET` | `/` | Discover the sample flow and useful endpoints |
+| `GET` | `/book/list` | List all books through the worker service proxy |
+| `GET` | `/book/id/{bookId}` | Read one book with MyBatis |
+| `POST` | `/book/add` | Create a book with Spring Data JPA |
+| `PUT` | `/book/update` | Update a book |
+| `DELETE` | `/book/delete/{bookId}` | Delete a book |
+| `GET` | `/book/events` | Stream event-loop, worker, and job phases over SSE |
+| `POST` | `/book/jobs/reindex` | Accept a search-index rebuild job |
+| `GET` | `/book/jobs/{jobId}` | Read job status and progress |
+| `GET` | `/book/search?q={query}` | Search the index published by the job |
 
 Create a book:
 
@@ -173,62 +179,52 @@ Create a book:
 curl -X POST http://localhost:8989/book/add \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "marble comics",
-    "author": "marble",
-    "pages": 987
+    "name": "Designing Event-Driven Systems",
+    "author": "Example Author",
+    "pages": 320
   }'
 ```
 
-Update a book:
+## Code Map
+
+| Component | Responsibility |
+|---|---|
+| `Application` | Creates Vert.x and deploys workers before the HTTP facade |
+| `VertxFacade` | Owns the HTTP event-loop boundary and discovery response |
+| `RouteHandler` / `RequestHandler` | Validate requests, return 202, dispatch work, and format responses |
+| `BookAsyncService` | Vert.x 5 Future-based service proxy contract |
+| `VertxWorker` | Registers service and job consumers on the worker pool |
+| `BookReindexJobWorker` | Performs the blocking search-index rebuild |
+| `BookJobRegistry` | Stores accepted-job state for this self-contained sample |
+| `BookSearchIndex` | Atomically publishes and queries the rebuilt index snapshot |
+| `EventLoopMonitor` | Publishes request and job phases to SSE clients |
+
+## Ports and Monitoring
+
+| Port | Service | Useful URL |
+|---|---|---|
+| `8989` | Vert.x public HTTP server | `http://localhost:8989/` |
+| `7979` | Spring Actuator | `http://localhost:7979/actuator/health` |
+| `9000` | Spring MVC / H2 console | `http://localhost:9000/h2-console` |
 
 ```bash
-curl -X PUT http://localhost:8989/book/update \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": 1,
-    "name": "updated title",
-    "author": "new author",
-    "pages": 500
-  }'
-```
-
-Responses follow this shape:
-
-```json
-{
-  "statusCode": 200,
-  "data": {},
-  "message": "operation success"
-}
-```
-
-## Monitoring
-
-Actuator endpoints:
-
-```bash
-curl http://localhost:7979/actuator
+curl http://localhost:7979/actuator/health
+curl http://localhost:7979/actuator/info
 curl http://localhost:7979/actuator/liquibase
 ```
 
-SSE trace:
-
-```bash
-curl -N http://localhost:8989/book/events
-```
-
-Each SSE event includes fields such as `requestId`, `operation`, `step`, `thread`, and `elapsedMs`, making the event-loop handoff visible without attaching a debugger.
+Each SSE event contains `requestId`, `operation`, `step`, `thread`, and `elapsedMs`, so the handoff can be inspected without a debugger.
 
 ## Configuration
 
-Profile-specific configuration lives under `src/main/resources/profiles/{profile}/`.
+Profile-specific settings live under `src/main/resources/profiles/{profile}/`.
 
-| Profile | Description |
-|---------|-------------|
-| `h2local` | In-memory H2 database for local runs |
-| `mariadb` | MariaDB-backed run profile |
+| Profile | Purpose |
+|---|---|
+| `h2local` | Zero-setup local run with an in-memory H2 database |
+| `mariadb` | External MariaDB-compatible deployment example |
 
-Key Vert.x settings:
+Important settings:
 
 ```properties
 vertx.port=8989
@@ -236,60 +232,56 @@ vertx.worker.pool.size=6
 vertx.springWorker.instances=4
 vertx.max.eventloop.execute.time=10000
 vertx.blocked.thread.check.interval=1000
+demo.reindex.item-delay-ms=150
 ```
 
-For MariaDB, update `src/main/resources/profiles/mariadb/application.properties`, then run:
+For MariaDB, replace the placeholders in `src/main/resources/profiles/mariadb/application.properties`, then run:
 
 ```bash
-mvn clean spring-boot:run -P mariadb
+./mvnw spring-boot:run -P mariadb
 ```
 
 ## Development
 
-Run tests:
+Run the tests:
 
 ```bash
-mvn test -P h2local
+./mvnw verify -P h2local
 ```
 
-Build the jar:
+Build the executable jar:
 
 ```bash
-mvn clean package
+./mvnw clean package -P h2local
+java -jar target/vertx-embedded-springboot-0.8.0-SNAPSHOT.jar
 ```
 
-Regenerate the animated README hero:
+Regenerate the animated hero from its SVG source:
 
 ```bash
 node scripts/render-event-loop-hero-gif.mjs
 ```
 
-The GIF is generated from `docs/event-loop-hero.svg` into `docs/event-loop-hero.gif`.
+The GitHub social preview is available at `docs/social-preview.png`; its editable source is `docs/social-preview.svg`.
 
-GitHub social preview image:
+## Production Boundary
+
+This repository keeps infrastructure in process so the asynchronous boundary is easy to study. `BookJobRegistry`, `BookSearchIndex`, and the Vert.x event bus are not durable across restarts. A production deployment should persist job state, use a durable broker when delivery guarantees matter, define idempotency and retry rules, and publish to an external search or vector store.
+
+The pattern stays the same even when those adapters change:
 
 ```text
-docs/social-preview.png
+accept quickly -> dispatch reliably -> isolate blocking work -> expose state
 ```
-
-The editable source is `docs/social-preview.svg`. Upload the PNG in the GitHub repository settings under social preview.
 
 ## Stack
 
-- **Java 17**
-- **Vert.x 4.5.27**
-- **Spring Boot 4.1.0**
-- **Spring Data JPA**
-- **MyBatis Spring Boot 4.0.1**
-- **Liquibase**
-- **H2 / MariaDB**
-- **log4jdbc**
-
-## Notes
-
-- `BookJobRegistry` is intentionally in-memory for this sample. A production job runner should persist job state in a database or external store.
-- The reindex job simulates long-running work so the event-loop handoff and worker progress are easy to observe.
-- The repository keeps the pattern small on purpose: the goal is to show the async boundary clearly.
+- Java 17
+- Vert.x 5.1.5
+- Spring Boot 4.1.0
+- Spring Data JPA and MyBatis
+- Liquibase
+- H2 and MariaDB-compatible JDBC
 
 ## Contributors
 
@@ -299,6 +291,7 @@ Built and maintained by Hyeonsang Jeon, with OpenAI Codex acknowledged as an AI 
 
 - [Vert.x Core Documentation](https://vertx.io/docs/vertx-core/java/)
 - [Vert.x Service Proxies](https://vertx.io/docs/vertx-service-proxy/java/)
+- [Vert.x 4 to 5 Migration Guide](https://vertx.io/docs/guides/vertx-5-migration-guide/)
 - [Spring Boot Documentation](https://docs.spring.io/spring-boot/)
 
 ## License

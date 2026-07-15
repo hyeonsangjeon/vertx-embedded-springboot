@@ -11,7 +11,7 @@ import com.vertx.worker.mvc.repository.BookRepository;
 
 
 /**
- * Concrete class, this class implement  based small bussiness logic needed with sysynchronous
+ * Blocking transactional service. Calls reach this class only through a worker verticle.
  *
  * @author hyeonsang jeon
  */
@@ -31,9 +31,9 @@ public class BookServiceImpl {
         JsonObject result = new JsonObject();
         Book data = bookRepository.save(new Book(reqParam));
 
-        result.put("statusCode", HttpStatus.OK.value());
+        result.put("statusCode", HttpStatus.CREATED.value());
         result.put("data", data.toJson());
-        result.put("message", "book save success");
+        result.put("message", "book created");
         return result;
     }
 
@@ -45,7 +45,7 @@ public class BookServiceImpl {
 
         result.put("statusCode", HttpStatus.OK.value());
         result.put("data", jsonArray);
-        result.put("message", "book list information");
+        result.put("message", "book list");
         return result;
     }
 
@@ -54,17 +54,17 @@ public class BookServiceImpl {
     public JsonObject get(Long bookId) {
         JsonObject result = new JsonObject();
 
-        // Mybatis
+        // MyBatis read path complements the Spring Data JPA write path in this sample.
         Book book = bookDao.selectBookOne(bookId);
 
         if (book != null) {
             result.put("statusCode", HttpStatus.OK.value());
             result.put("data", book.toJson());
-            result.put("message", "unique book information");
+            result.put("message", "book found");
         } else {
             result.put("statusCode", HttpStatus.NOT_FOUND.value());
             result.put("data", new JsonObject());
-            result.put("message", "no search book information");
+            result.put("message", "book not found");
         }
 
         return result;
@@ -82,7 +82,7 @@ public class BookServiceImpl {
 
         result.put("statusCode", HttpStatus.OK.value());
         result.put("data", changedBook.toJson());
-        result.put("message", "update book success");
+        result.put("message", "book updated");
         return result;
     }
 
@@ -93,7 +93,7 @@ public class BookServiceImpl {
         bookRepository.deleteById(bookId);
 
         result.put("statusCode", HttpStatus.OK.value());
-        result.put("message", "delete book success");
+        result.put("message", "book deleted");
         return result;
 
     }

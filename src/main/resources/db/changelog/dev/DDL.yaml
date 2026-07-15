@@ -1,18 +1,5 @@
 databaseChangeLog:
     - changeSet:
-        id: 1_dropTable-book-example
-        author: admin
-        preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            schemaName: THIS   
-            tableName: book        
-        changes:
-        - dropTable:
-            cascadeConstraints: true
-            tableName: book
-    
-    - changeSet:
         id: 2_create_book_example
         author: admin
         comment: "book info table"

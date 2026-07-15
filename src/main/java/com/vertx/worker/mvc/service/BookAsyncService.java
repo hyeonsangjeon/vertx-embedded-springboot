@@ -1,13 +1,11 @@
 package com.vertx.worker.mvc.service;
 
-import com.vertx.worker.mvc.dto.Book;
 import io.vertx.codegen.annotations.ProxyGen;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
 /**
- * Let's see <a href="http://vertx.io/docs/vertx-service-proxy/java/">Vert.x Service Proxies</a>.
+ * Future-based service contract transported over the Vert.x event bus.
  *
  * @author hyeonsang jeon
  */
@@ -15,13 +13,13 @@ import io.vertx.core.json.JsonObject;
 public interface BookAsyncService {
     String ADDRESS = BookAsyncService.class.getName();
 
-    void save(JsonObject reqParam, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
+    Future<JsonObject> save(JsonObject reqParam, JsonObject trace);
 
-    void getAll(JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
+    Future<JsonObject> getAll(JsonObject trace);
 
-    void get(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
+    Future<JsonObject> get(Long bookId, JsonObject trace);
 
-    void update(Book reqParam, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
+    Future<JsonObject> update(JsonObject reqParam, JsonObject trace);
 
-    void delete(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler);
+    Future<JsonObject> delete(Long bookId, JsonObject trace);
 }

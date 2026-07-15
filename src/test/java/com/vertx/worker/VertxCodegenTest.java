@@ -1,6 +1,8 @@
 package com.vertx.worker;
 
 import com.vertx.worker.mvc.dto.Book;
+import com.vertx.worker.mvc.service.BookAsyncService;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.Test;
@@ -10,13 +12,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class VertxCodegenTest {
 
     @Test
-    public void generatedServiceProxyClassesAreAvailable() throws Exception {
+    void generatedServiceProxyClassesAreAvailable() throws Exception {
         Class.forName("com.vertx.worker.mvc.service.BookAsyncServiceVertxEBProxy");
         Class.forName("com.vertx.worker.mvc.service.BookAsyncServiceVertxProxyHandler");
+        assertEquals(Future.class, BookAsyncService.class
+                .getMethod("getAll", JsonObject.class)
+                .getReturnType());
     }
 
     @Test
-    public void vertxJsonCodecIsCompatibleWithManagedJacksonVersion() {
+    void vertxJsonCodecIsCompatibleWithManagedJacksonVersion() {
         JsonArray data = new JsonArray()
                 .add(new JsonObject()
                         .put("id", 1)
@@ -27,7 +32,7 @@ class VertxCodegenTest {
     }
 
     @Test
-    public void bookDataObjectRoundTripsThroughJsonObject() {
+    void bookJsonBoundaryRoundTripsThroughJsonObject() {
         Book book = new Book(new JsonObject()
                 .put("id", 10)
                 .put("name", "Modern Vert.x")

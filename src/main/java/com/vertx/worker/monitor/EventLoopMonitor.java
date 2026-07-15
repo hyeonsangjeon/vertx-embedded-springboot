@@ -1,7 +1,6 @@
 package com.vertx.worker.monitor;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.http.HttpServerResponse;
@@ -31,10 +30,8 @@ public class EventLoopMonitor {
         }
 
         this.vertx = vertx;
-        Promise<Void> promise = Promise.promise();
         consumer = vertx.eventBus().consumer(EVENT_ADDRESS, message -> broadcast(message.body()));
-        consumer.completionHandler(promise);
-        return promise.future();
+        return consumer.completion();
     }
 
     public void connect(RoutingContext routingContext) {
@@ -149,7 +146,7 @@ public class EventLoopMonitor {
     private JsonObject error(Throwable cause) {
         return new JsonObject()
                 .put("error", cause.getClass().getSimpleName())
-                .put("message", cause.getMessage());
+                .put("message", cause.getMessage() == null ? "unexpected failure" : cause.getMessage());
     }
 
     private void broadcast(JsonObject event) {
@@ -158,9 +155,10 @@ public class EventLoopMonitor {
 
     private void write(HttpServerResponse response, JsonObject event) {
         try {
-            response.write("id: " + event.getLong("sequence") + "\n");
-            response.write("event: " + event.getString("phase") + "\n");
-            response.write("data: " + event.encode() + "\n\n");
+            String frame = "id: " + event.getLong("sequence") + "\n"
+                    + "event: " + event.getString("phase") + "\n"
+                    + "data: " + event.encode() + "\n\n";
+            response.write(frame).onFailure(ignored -> clients.remove(response));
         } catch (IllegalStateException e) {
             clients.remove(response);
         }

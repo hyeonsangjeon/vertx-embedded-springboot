@@ -5,15 +5,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
-import io.vertx.codegen.annotations.DataObject;
 import io.vertx.core.json.JsonObject;
 
-//no working lombok, check here.
 @Entity
-@DataObject(generateConverter = true)
 public class Book {
-    private static final long serialVersionUID = 8203836758273948712L;
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,7 +22,7 @@ public class Book {
     protected Book() {
     }
 
-    // Mandatory for data objects DTO parsing
+    // Used at the JSON/event-bus boundary before entering the persistence layer.
     public Book(JsonObject jsonObject) {
         this.id = jsonObject.getLong("id");
         this.name = jsonObject.getString("name", "");

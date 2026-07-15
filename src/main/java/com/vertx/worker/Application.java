@@ -1,8 +1,13 @@
 package com.vertx.worker;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import com.vertx.worker.vertx.VertxFacade;
+import com.vertx.worker.vertx.VertxWorker;
+import com.vertx.worker.vertx.factory.SpringVerticleFactory;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
+import io.vertx.core.ThreadingModel;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,21 +16,16 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
-import com.vertx.worker.vertx.factory.SpringVerticleFactory;
-import com.vertx.worker.vertx.VertxFacade;
-import com.vertx.worker.vertx.VertxWorker;
 
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.ThreadingModel;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
-import static java.util.concurrent.TimeUnit.*;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * SpringBoot Building class ,building embeded springboot verticle
- * This class deploys  verticle instances which has single facade vertical {@link VertxFacade}  instance and multithreading process instances {@link VertxWorker}
- * Deploy verticles when the Spring application is ready.
+ * Bootstraps Vert.x inside the Spring application context.
+ * Worker consumers are deployed before the HTTP facade so requests cannot arrive before a handler is ready.
  *
  * @author hyeonsang jeon
  */
@@ -35,16 +35,7 @@ public class Application {
 
     private final SpringVerticleFactory verticleFactory;
 
-    /**
-     * The Vert.x worker pool size, configured in the {@code application.properties} file.
-     * Make sure this is greater than {@link #springWorkerInstances}.
-     */
     private final int workerPoolSize;
-
-
-    /**
-     * The number of {@link VertxWorker} instances to deploy, configured in the {@code application.properties} file.
-     */
     private final int springWorkerInstances;
     private final int maxEventLoopExecuteTime;
     private final int blockedThreadCheckInterval;
@@ -63,84 +54,61 @@ public class Application {
         this.maxEventLoopExecuteTime = maxEventLoopExecuteTime;
         this.blockedThreadCheckInterval = blockedThreadCheckInterval;
     }
-
-
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
 
-
-    //After Spring application is ready, verticles deploying starts.
-    @EventListener
-    public void deployVerticles(ApplicationReadyEvent event) {
-        vertx = Vertx.vertx(vertxOptions());
+    @EventListener(ApplicationReadyEvent.class)
+    public void deployVerticles() {
+        vertx = Vertx.builder().with(vertxOptions()).build();
         vertx.registerVerticleFactory(verticleFactory);
 
-        CountDownLatch deployLatch = new CountDownLatch(2);
-        AtomicBoolean failed = new AtomicBoolean(false);
-
-        //Sender(Handler)
-        String vertxController = verticleFactory.prefix() + ":" + VertxFacade.class.getName();
-
-        vertx.deployVerticle(vertxController, res -> {
-            if (res.failed()) {
-                logger.error("Failed to deploy verticle", res.cause());
-                failed.compareAndSet(false, true);
-            }
-            deployLatch.countDown();
-        });
-
-
-        //Worker(Concrete)
-        /**Worker Verticle
-         * The number of worker instances is set larger than the minimum cpu cores. */
         DeploymentOptions workerDeployOpt = new DeploymentOptions()
                 .setThreadingModel(ThreadingModel.WORKER)
                 .setInstances(springWorkerInstances);
         String vertxWorker = verticleFactory.prefix() + ":" + VertxWorker.class.getName();
+        String vertxFacade = verticleFactory.prefix() + ":" + VertxFacade.class.getName();
 
-        vertx.deployVerticle(vertxWorker, workerDeployOpt, res -> {
-            if (res.failed()) {
-                logger.error("Failed to deploy verticle", res.cause());
-                failed.compareAndSet(false, true);
-            }
-            deployLatch.countDown();
-        });
+        Future<String> deployment = vertx.deployVerticle(vertxWorker, workerDeployOpt)
+                .onSuccess(id -> logger.info("Deployed {} worker verticles", springWorkerInstances))
+                .compose(ignored -> vertx.deployVerticle(vertxFacade))
+                .onSuccess(id -> logger.info("Vert.x facade is ready"));
 
         try {
-            if (!deployLatch.await(5, SECONDS)) {
-                throw new RuntimeException("Timeout waiting for verticle deployments");
-            } else if (failed.get()) {
-                throw new RuntimeException("Failure while deploying verticles");
+            await(deployment, "Vert.x startup");
+        } catch (IllegalStateException e) {
+            try {
+                await(vertx.close(), "Vert.x startup cleanup");
+            } catch (IllegalStateException cleanupFailure) {
+                e.addSuppressed(cleanupFailure);
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            throw e;
         }
-
     }
 
-    @EventListener
-    public void closeVertx(ContextClosedEvent event) {
+    @EventListener(ContextClosedEvent.class)
+    public void closeVertx() {
         if (vertx == null) {
             return;
         }
 
-        CountDownLatch closeLatch = new CountDownLatch(1);
-        vertx.close(ar -> {
-            if (ar.failed()) {
-                logger.warn("Failed to close Vert.x", ar.cause());
-            }
-            closeLatch.countDown();
-        });
-
         try {
-            if (!closeLatch.await(5, SECONDS)) {
-                logger.warn("Timeout waiting for Vert.x shutdown");
-            }
+            await(vertx.close(), "Vert.x shutdown");
+        } catch (IllegalStateException e) {
+            logger.warn("Failed to close Vert.x cleanly", e);
+        }
+    }
+
+    private void await(Future<?> future, String operation) {
+        try {
+            future.toCompletionStage().toCompletableFuture().get(10, SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            logger.warn("Interrupted while waiting for Vert.x shutdown", e);
+            throw new IllegalStateException(operation + " was interrupted", e);
+        } catch (ExecutionException e) {
+            throw new IllegalStateException(operation + " failed", e.getCause());
+        } catch (TimeoutException e) {
+            throw new IllegalStateException(operation + " timed out", e);
         }
     }
 
@@ -152,5 +120,4 @@ public class Application {
                 .setMaxEventLoopExecuteTime(maxEventLoopExecuteTime)
                 .setMaxEventLoopExecuteTimeUnit(MILLISECONDS);
     }
-
 }
