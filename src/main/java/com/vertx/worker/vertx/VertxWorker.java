@@ -1,21 +1,19 @@
 package com.vertx.worker.vertx;
 
 import com.vertx.worker.job.BookReindexJobWorker;
+import com.vertx.worker.mvc.service.BookAsyncService;
+import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
+import io.vertx.serviceproxy.ServiceBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import com.vertx.worker.mvc.service.BookAsyncService;
-
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Promise;
-import io.vertx.serviceproxy.ServiceBinder;
-import org.springframework.context.annotation.Scope;
-
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.*;
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
 /**
  * Worker-pool verticle that executes service calls and accepted background jobs off the event loop.
@@ -38,23 +36,18 @@ public class VertxWorker extends AbstractVerticle {
 
     @Override
     public void start(Promise<Void> startPromise) {
-        Promise<Void> serviceReady = Promise.promise();
-        Promise<Void> jobReady = Promise.promise();
-
         serviceConsumer = new ServiceBinder(vertx)
                 .setAddress(BookAsyncService.ADDRESS)
                 .register(BookAsyncService.class, bookAsyncService);
-        serviceConsumer.completionHandler(serviceReady);
 
         jobConsumer = vertx.eventBus().consumer(
                 BookReindexJobWorker.ADDRESS,
                 message -> bookReindexJobWorker.reindex(message.body())
         );
-        jobConsumer.completionHandler(jobReady);
 
-        Future.all(serviceReady.future(), jobReady.future()).onComplete(ar -> {
+        Future.all(serviceConsumer.completion(), jobConsumer.completion()).onComplete(ar -> {
             if (ar.succeeded()) {
-                logger.info("SpringWorker started");
+                logger.info("Vert.x worker consumer started on {}", Thread.currentThread().getName());
                 startPromise.complete();
             } else {
                 startPromise.fail(ar.cause());

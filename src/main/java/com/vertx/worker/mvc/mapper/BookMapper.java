@@ -6,7 +6,5 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface BookMapper {
 
-    String getCurrentTime();
-
     Book selectBookOne(Long id);
 }

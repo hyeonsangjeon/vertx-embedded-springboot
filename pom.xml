@@ -3,13 +3,20 @@
          xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.example</groupId>
-    <artifactId>vertx-embeded-springboot</artifactId>
-    <version>0.7-SNAPSHOT</version>
+    <groupId>io.github.hyeonsangjeon</groupId>
+    <artifactId>vertx-embedded-springboot</artifactId>
+    <version>0.8.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>vertx-springboot</name>
-    <description>vertx asynchronous multi thread Project for Spring Boot</description>
+    <name>Vert.x Embedded Spring Boot Async Worker Pattern</name>
+    <description>Event-loop based async worker pattern for long-running platform jobs</description>
+    <url>https://github.com/hyeonsangjeon/vertx-embedded-springboot</url>
+
+    <scm>
+        <connection>scm:git:https://github.com/hyeonsangjeon/vertx-embedded-springboot.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/hyeonsangjeon/vertx-embedded-springboot.git</developerConnection>
+        <url>https://github.com/hyeonsangjeon/vertx-embedded-springboot</url>
+    </scm>
 
     <licenses>
         <license>
@@ -28,55 +35,48 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
-        <vertx.version>4.5.27</vertx.version>
+        <vertx.version>5.1.5</vertx.version>
         <mybatis.spring.boot.version>4.0.1</mybatis.spring.boot.version>
     </properties>
 
     <dependencies>
-        <!---Vert.x setting ################################################# -->
-        <!-- vert.x core -->
+        <!-- Vert.x event loop, HTTP, event bus, and service proxy -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-core</artifactId>
             <version>${vertx.version}</version>
         </dependency>
-        <!-- vert.x web -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-web</artifactId>
             <version>${vertx.version}</version>
         </dependency>
-        <!-- vert.x async proxy handler -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-service-proxy</artifactId>
             <version>${vertx.version}</version>
         </dependency>
-        <!-- vert.x code generator -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-codegen</artifactId>
             <version>${vertx.version}</version>
+            <classifier>processor</classifier>
             <scope>provided</scope>
         </dependency>
-        <!---SpringBoot initial setting ################################################# -->
 
-        <!-- Spring Actuator dependency-->
+        <!-- Spring lifecycle, monitoring, and blocking persistence adapters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- Spring Actuator for Web Monitoring -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
-        <!-- Spring Actuator for liquibase migration-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-liquibase</artifactId>
         </dependency>
-        <!-- SpringBoot DB dependency-->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -87,33 +87,25 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- Spring init example for jpa DB -->
+        <!-- Spring Data JPA persistence -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-        <!---SpringBoot Mybatis setting ################################################# -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>${mybatis.spring.boot.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.bgee.log4jdbc-log4j2</groupId>
-            <artifactId>log4jdbc-log4j2-jdbc4.1</artifactId>
-            <version>1.16</version>
-        </dependency>
-        <!---Test setting ################################################# -->
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        <!---################################################################ -->
     </dependencies>
 
     <build>
-        <!---dividing profile setting ################################################# -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -125,32 +117,23 @@
                 <directory>src/main/resources/profiles/${env}</directory>
             </resource>
         </resources>
-        <!---dividing profile setting ################################################# //-->
-        <pluginManagement>
-            <plugins>
-                <!-- We specify the Maven compiler plugin because Vert.x service proxy codegen is annotation-processor based. -->
-                <plugin>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <release>${java.version}</release>
-                        <annotationProcessors>
-                            <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
-                        </annotationProcessors>
-                        <encoding>${project.build.sourceEncoding}</encoding>
-                        <showDeprecation>true</showDeprecation>
-                        <showWarnings>true</showWarnings>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
         <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${java.version}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <showDeprecation>true</showDeprecation>
+                    <showWarnings>true</showWarnings>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
-    <!---dividing profile setting ################################################# -->
+
     <profiles>
         <profile>
             <id>h2local</id>
@@ -168,6 +151,5 @@
             </properties>
         </profile>
     </profiles>
-    <!---dividing profile setting ################################################# ..-->
 
 </project>

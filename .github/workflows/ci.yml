@@ -14,8 +14,9 @@ permissions:
 
 jobs:
   test:
-    name: Maven test (Java 17)
+    name: Verify (Java 17)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -28,5 +29,8 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Run tests
-        run: mvn -B -ntp test -P h2local
+      - name: Validate demo script
+        run: bash -n scripts/demo.sh
+
+      - name: Build and test
+        run: ./mvnw -B -ntp verify -P h2local

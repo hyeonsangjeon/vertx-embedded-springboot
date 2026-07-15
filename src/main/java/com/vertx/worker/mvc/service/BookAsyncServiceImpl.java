@@ -1,12 +1,10 @@
 package com.vertx.worker.mvc.service;
 
 import com.vertx.worker.monitor.EventLoopMonitor;
+import com.vertx.worker.mvc.dto.Book;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import org.springframework.stereotype.Component;
-import com.vertx.worker.mvc.dto.Book;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
 
 import java.util.function.Supplier;
 
@@ -27,40 +25,39 @@ public class BookAsyncServiceImpl implements BookAsyncService {
     }
 
     @Override
-    public void save(JsonObject reqParam, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
-        complete(trace, "book.save", resultHandler, () -> bookService.save(reqParam));
+    public Future<JsonObject> save(JsonObject reqParam, JsonObject trace) {
+        return complete(trace, "book.save", () -> bookService.save(reqParam));
     }
 
     @Override
-    public void getAll(JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
-        complete(trace, "book.list", resultHandler, bookService::getAll);
+    public Future<JsonObject> getAll(JsonObject trace) {
+        return complete(trace, "book.list", bookService::getAll);
     }
 
     @Override
-    public void get(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
-        complete(trace, "book.get", resultHandler, () -> bookService.get(bookId));
+    public Future<JsonObject> get(Long bookId, JsonObject trace) {
+        return complete(trace, "book.get", () -> bookService.get(bookId));
     }
 
     @Override
-    public void update(Book book, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
-        complete(trace, "book.update", resultHandler, () -> bookService.update(book));
+    public Future<JsonObject> update(JsonObject book, JsonObject trace) {
+        return complete(trace, "book.update", () -> bookService.update(new Book(book)));
     }
 
     @Override
-    public void delete(Long bookId, JsonObject trace, Handler<AsyncResult<JsonObject>> resultHandler) {
-        complete(trace, "book.delete", resultHandler, () -> bookService.delete(bookId));
+    public Future<JsonObject> delete(Long bookId, JsonObject trace) {
+        return complete(trace, "book.delete", () -> bookService.delete(bookId));
     }
 
-    private void complete(JsonObject trace, String step, Handler<AsyncResult<JsonObject>> resultHandler,
-                          Supplier<JsonObject> action) {
+    private Future<JsonObject> complete(JsonObject trace, String step, Supplier<JsonObject> action) {
         monitor.workerStarted(trace, step);
         try {
             JsonObject result = action.get();
             monitor.workerCompleted(trace, step);
-            resultHandler.handle(Future.succeededFuture(result));
+            return Future.succeededFuture(result);
         } catch (Exception e) {
             monitor.workerFailed(trace, step, e);
-            resultHandler.handle(Future.failedFuture(e));
+            return Future.failedFuture(e);
         }
     }
 }

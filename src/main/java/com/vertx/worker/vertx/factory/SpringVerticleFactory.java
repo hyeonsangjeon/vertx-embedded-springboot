@@ -15,44 +15,43 @@
  */
 
 package com.vertx.worker.vertx.factory;
+
 import java.util.concurrent.Callable;
 
+import io.vertx.core.Deployable;
 import io.vertx.core.Promise;
-import io.vertx.core.Verticle;
 import io.vertx.core.spi.VerticleFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 /**
- * A {@link VerticleFactory} backed by Spring's {@link ApplicationContext}. It allows to implement verticles as Spring
- * beans and thus benefit from dependency injection, ...etc.
+ * A {@link VerticleFactory} backed by Spring's {@link ApplicationContext}.
  *
  * @author Thomas Segismont
  */
 @Component
 public class SpringVerticleFactory implements VerticleFactory {
 
-  private final ApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
 
-  public SpringVerticleFactory(ApplicationContext applicationContext) {
-    this.applicationContext = applicationContext;
-  }
-
-  @Override
-  public String prefix() {
-    // Just an arbitrary string which must uniquely identify the verticle factory
-    return "book";
-  }
-
-  @Override
-  public void createVerticle(String verticleName, ClassLoader classLoader,
-                             Promise<Callable<Verticle>> promise) {
-    String className = VerticleFactory.removePrefix(verticleName);
-    try {
-      Class<?> verticleClass = classLoader.loadClass(className);
-      promise.complete(() -> (Verticle) applicationContext.getBean(verticleClass));
-    } catch (ClassNotFoundException e) {
-      promise.fail(e);
+    public SpringVerticleFactory(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
     }
-  }
+
+    @Override
+    public String prefix() {
+        return "book";
+    }
+
+    @Override
+    public void createVerticle2(String verticleName, ClassLoader classLoader,
+                                Promise<Callable<? extends Deployable>> promise) {
+        String className = VerticleFactory.removePrefix(verticleName);
+        try {
+            Class<? extends Deployable> verticleClass = classLoader.loadClass(className).asSubclass(Deployable.class);
+            promise.complete(() -> applicationContext.getBean(verticleClass));
+        } catch (ClassNotFoundException | ClassCastException e) {
+            promise.fail(e);
+        }
+    }
 }
