@@ -1,5 +1,6 @@
 package com.vertx.worker.mvc.handler;
 
+import com.vertx.worker.availability.BookAvailabilityAggregator;
 import com.vertx.worker.job.BookJobRegistry;
 import com.vertx.worker.monitor.EventLoopMonitor;
 import com.vertx.worker.mvc.service.BookAsyncService;
@@ -15,18 +16,23 @@ public class RouteHandler {
     private final EventLoopMonitor monitor;
     private final BookJobRegistry jobRegistry;
     private final BookSearchIndex searchIndex;
+    private final BookAvailabilityAggregator availabilityAggregator;
 
     public RouteHandler(Vertx vertx, BookAsyncService bookAsyncService, EventLoopMonitor monitor,
-                        BookJobRegistry jobRegistry, BookSearchIndex searchIndex) {
+                        BookJobRegistry jobRegistry, BookSearchIndex searchIndex,
+                        BookAvailabilityAggregator availabilityAggregator) {
         this.vertx = vertx;
         this.bookAsyncService = bookAsyncService;
         this.monitor = monitor;
         this.jobRegistry = jobRegistry;
         this.searchIndex = searchIndex;
+        this.availabilityAggregator = availabilityAggregator;
     }
 
     public Router getRouter() {
-        RequestHandler reqHandler = new RequestHandler(bookAsyncService, monitor, jobRegistry, searchIndex, vertx);
+        RequestHandler reqHandler = new RequestHandler(
+                bookAsyncService, monitor, jobRegistry, searchIndex, availabilityAggregator, vertx
+        );
         Router router = Router.router(vertx);
 
         router.get("/events").handler(reqHandler::events);
@@ -38,6 +44,7 @@ public class RouteHandler {
         router.get("/list").handler(reqHandler::getAll);
         router.get("/id/:bookId").handler(reqHandler::get);
         router.get("/search").handler(reqHandler::searchBooks);
+        router.get("/availability/:bookId").handler(reqHandler::getAvailability);
         router.put("/update").handler(reqHandler::updateBook);
         router.delete("/delete/:bookId").handler(reqHandler::deleteBook);
         router.post("/jobs/reindex").handler(reqHandler::createReindexJob);

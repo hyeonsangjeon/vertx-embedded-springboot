@@ -1,5 +1,7 @@
 package com.vertx.worker.vertx;
 
+import com.vertx.worker.availability.BookAvailabilityAggregator;
+import com.vertx.worker.availability.DemoInventoryProviderHandler;
 import com.vertx.worker.job.BookJobRegistry;
 import com.vertx.worker.monitor.EventLoopMonitor;
 import com.vertx.worker.mvc.handler.RouteHandler;
@@ -19,8 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Event-loop boundary for HTTP requests.
- * It routes lightweight work to {@link BookAsyncService} and accepts background jobs through {@link RouteHandler}.
+ * Event-loop HTTP boundary for non-blocking fan-out, proxied persistence calls, and accepted background jobs.
  */
 @Component
 public class VertxFacade extends AbstractVerticle {
@@ -32,6 +33,7 @@ public class VertxFacade extends AbstractVerticle {
     private final BookSearchIndex searchIndex;
 
     private BookAsyncService bookAsyncService;
+    private BookAvailabilityAggregator availabilityAggregator;
 
     public VertxFacade(
             @Value("${vertx.port}") int vertxPort,
@@ -47,6 +49,7 @@ public class VertxFacade extends AbstractVerticle {
     @Override
     public void start(Promise<Void> startPromise) {
         bookAsyncService = new ServiceProxyBuilder(vertx).setAddress(BookAsyncService.ADDRESS).build(BookAsyncService.class);
+        availabilityAggregator = new BookAvailabilityAggregator(vertx, vertxPort);
 
         monitor.bind(vertx)
                 .compose(ignored -> startServer())
@@ -59,9 +62,14 @@ public class VertxFacade extends AbstractVerticle {
 
     private Future<HttpServer> startServer() {
         Router apiRouter = Router.router(vertx);
+        DemoInventoryProviderHandler inventoryProvider = new DemoInventoryProviderHandler(vertx);
+
         apiRouter.get("/").handler(this::describeApi);
+        apiRouter.get("/demo/inventory/:provider/books/:bookId")
+                .handler(inventoryProvider::getAvailability);
         apiRouter.route("/book/*").subRouter(
-                new RouteHandler(vertx, bookAsyncService, monitor, jobRegistry, searchIndex).getRouter()
+                new RouteHandler(vertx, bookAsyncService, monitor, jobRegistry, searchIndex, availabilityAggregator)
+                        .getRouter()
         );
         return vertx.createHttpServer()
                 .requestHandler(apiRouter)
@@ -70,12 +78,16 @@ public class VertxFacade extends AbstractVerticle {
 
     private void describeApi(RoutingContext routingContext) {
         JsonObject response = new JsonObject()
-                .put("name", "Vert.x Embedded Spring Boot Async Worker Pattern")
+                .put("name", "Vert.x Embedded Spring Boot Async Patterns")
                 .put("status", "ready")
-                .put("pattern", "accept on event loop -> dispatch over event bus -> execute on worker -> observe")
+                .put("patterns", new JsonObject()
+                        .put("nonBlockingIo", "event loop -> concurrent HTTP futures -> combined result")
+                        .put("blockingWork", "202 Accepted -> event bus -> worker thread -> observable result"))
                 .put("servedByThread", Thread.currentThread().getName())
                 .put("try", new JsonObject()
                         .put("watchEvents", "GET /book/events")
+                        .put("fanOutAvailability", "GET /book/availability/1")
+                        .put("partialFailure", "GET /book/availability/1?fail=busan")
                         .put("submitJob", "POST /book/jobs/reindex")
                         .put("jobStatus", "GET /book/jobs/{jobId}")
                         .put("searchResult", "GET /book/search?q=Hyeon-Sang"));
@@ -83,5 +95,13 @@ public class VertxFacade extends AbstractVerticle {
         routingContext.response()
                 .putHeader("content-type", "application/json; charset=utf-8")
                 .end(response.encodePrettily());
+    }
+
+    @Override
+    public void stop(Promise<Void> stopPromise) {
+        if (availabilityAggregator != null) {
+            availabilityAggregator.close();
+        }
+        stopPromise.complete();
     }
 }

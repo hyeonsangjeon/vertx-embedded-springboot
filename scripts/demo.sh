@@ -14,8 +14,8 @@ if ! curl --fail --silent "${BASE_URL}/" >/dev/null; then
   exit 1
 fi
 
-printf '\nWatching the event loop and worker lifecycle...\n\n'
-curl --no-buffer --silent --max-time 4 "${BASE_URL}/book/events" &
+printf '\nWatching event-loop I/O and worker lifecycle events...\n\n'
+curl --no-buffer --silent --max-time 5 "${BASE_URL}/book/events" &
 sse_pid=$!
 
 cleanup() {
@@ -26,6 +26,14 @@ cleanup() {
 trap cleanup EXIT
 
 sleep 0.4
+printf '\nQuerying three inventory services concurrently...\n\n'
+curl --fail --silent --show-error "${BASE_URL}/book/availability/1"
+printf '\n'
+
+printf '\nRepeating the fan-out with one simulated downstream failure...\n\n'
+curl --fail --silent --show-error "${BASE_URL}/book/availability/1?fail=busan"
+printf '\n'
+
 printf '\nSubmitting a search-index rebuild...\n\n'
 curl --silent --show-error --include --request POST "${BASE_URL}/book/jobs/reindex"
 printf '\n'

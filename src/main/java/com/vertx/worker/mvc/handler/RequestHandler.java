@@ -1,5 +1,6 @@
 package com.vertx.worker.mvc.handler;
 
+import com.vertx.worker.availability.BookAvailabilityAggregator;
 import com.vertx.worker.job.BookJob;
 import com.vertx.worker.job.BookJobRegistry;
 import com.vertx.worker.job.BookReindexJobWorker;
@@ -14,9 +15,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.springframework.http.HttpStatus;
 
-/**
- * HTTP boundary that keeps event-loop work small and dispatches blocking operations to worker verticles.
- */
+/** Keeps event-loop work small, composes asynchronous I/O, and dispatches blocking work to worker verticles. */
 public class RequestHandler {
 
     private static final String CONTENT_TYPE = "application/json; charset=utf-8";
@@ -24,6 +23,7 @@ public class RequestHandler {
     private final EventLoopMonitor monitor;
     private final BookJobRegistry jobRegistry;
     private final BookSearchIndex searchIndex;
+    private final BookAvailabilityAggregator availabilityAggregator;
     private final Vertx vertx;
 
     public RequestHandler(
@@ -31,11 +31,13 @@ public class RequestHandler {
             EventLoopMonitor monitor,
             BookJobRegistry jobRegistry,
             BookSearchIndex searchIndex,
+            BookAvailabilityAggregator availabilityAggregator,
             Vertx vertx) {
         this.bookAsyncService = bookAsyncService;
         this.monitor = monitor;
         this.jobRegistry = jobRegistry;
         this.searchIndex = searchIndex;
+        this.availabilityAggregator = availabilityAggregator;
         this.vertx = vertx;
     }
 
@@ -132,7 +134,7 @@ public class RequestHandler {
                 .put("message", "search index rebuild accepted");
 
         sendResult(routingContext.response(), trace, result)
-                .onComplete(ignored -> dispatchReindexJob(trace, job));
+                .onSuccess(ignored -> dispatchReindexJob(trace, job));
     }
 
     public void getJob(RoutingContext routingContext) {
@@ -170,6 +172,34 @@ public class RequestHandler {
                         .put("results", matches))
                 .put("message", "search completed on the in-memory index");
         sendResult(routingContext.response(), trace, result);
+    }
+
+    public void getAvailability(RoutingContext routingContext) {
+        JsonObject trace = monitor.startHttpRequest(routingContext, "book.availability");
+        Long bookId = bookIdParam(routingContext, trace);
+        if (bookId == null || bookId <= 0) {
+            if (bookId != null) {
+                sendBadRequest(routingContext, trace, "bookId must be a positive number");
+            }
+            return;
+        }
+
+        String failedProvider = routingContext.request().getParam("fail");
+        if (!availabilityAggregator.supportsProvider(failedProvider)) {
+            sendBadRequest(routingContext, trace, "fail must name one of: seoul, busan, incheon");
+            return;
+        }
+
+        monitor.ioFanOutStarted(trace, availabilityAggregator.providerNames());
+        Future<JsonObject> availability = availabilityAggregator.check(bookId, failedProvider)
+                .map(data -> {
+                    monitor.ioFanOutCompleted(trace, data);
+                    return new JsonObject()
+                            .put("statusCode", HttpStatus.OK.value())
+                            .put("data", data)
+                            .put("message", "inventory providers queried concurrently");
+                });
+        sendFutureResult(routingContext, trace, availability);
     }
 
     public void failure(RoutingContext routingContext) {

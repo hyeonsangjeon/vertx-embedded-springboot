@@ -1,6 +1,6 @@
 <svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Vert.x Embedded Spring Boot Async Worker Pattern</title>
-  <desc id="desc">Social preview image for a Vert.x embedded Spring Boot async worker pattern repository.</desc>
+  <title id="title">Vert.x and Spring Boot Event Loop and Async Worker Patterns</title>
+  <desc id="desc">Social preview for concurrent HTTP fan-out and accepted background work with embedded Vert.x and Spring Boot.</desc>
 
   <defs>
     <radialGradient id="bg" cx="52%" cy="40%" r="78%">
@@ -52,34 +52,34 @@
   <path d="M0 118H1280M0 236H1280M0 472H1280M144 0V640M288 0V640M432 0V640M576 0V640M720 0V640M864 0V640M1008 0V640M1152 0V640" stroke="#1e293b" stroke-opacity="0.18"/>
   <circle cx="826" cy="338" r="238" fill="url(#loopGlow)"/>
 
-  <text x="70" y="112" class="title">Async Worker Pattern</text>
-  <text x="72" y="154" class="subtitle">Vert.x embedded in Spring Boot for long-running platform jobs</text>
+  <text x="70" y="112" class="title">Event Loop + Async Workers</text>
+  <text x="72" y="154" class="subtitle">Vert.x embedded in Spring Boot for two practical async boundaries</text>
 
   <g transform="translate(72 202)">
     <rect width="474" height="54" rx="27" fill="#020617" fill-opacity="0.58" stroke="#38bdf8" stroke-opacity="0.42"/>
     <circle cx="28" cy="27" r="8" fill="#34d399" filter="url(#glow)"/>
-    <text x="52" y="33" class="mono">receive fast -> dispatch async -> workers execute</text>
+    <text x="52" y="33" class="mono">compose async I/O -> isolate blocking work</text>
   </g>
 
   <g transform="translate(72 300)" filter="url(#shadow)">
     <rect width="214" height="112" rx="18" class="panel" stroke="#38bdf8"/>
     <text x="28" y="40" class="small">EVENT LOOP</text>
-    <text x="28" y="75" class="label">202 Accepted</text>
-    <text x="28" y="99" class="body">caller released fast</text>
+    <text x="28" y="75" class="label">HTTP fan-out</text>
+    <text x="28" y="99" class="body">WebClient + Future.all</text>
   </g>
 
   <g transform="translate(366 300)" filter="url(#shadow)">
     <rect width="214" height="112" rx="18" class="panel" stroke="#38bdf8"/>
     <text x="28" y="40" class="small">EVENT BUS</text>
-    <text x="28" y="75" class="label">Async dispatch</text>
-    <text x="28" y="99" class="body">service proxy + jobs</text>
+    <text x="28" y="75" class="label">202 + dispatch</text>
+    <text x="28" y="99" class="body">accepted background jobs</text>
   </g>
 
   <g transform="translate(958 300)" filter="url(#shadow)">
     <rect width="236" height="112" rx="18" class="panel" stroke="#fbbf24"/>
     <text x="28" y="40" class="small">OBSERVABILITY</text>
-    <text x="28" y="75" class="label">SSE progress</text>
-    <text x="28" y="99" class="body">status without waiting</text>
+    <text x="28" y="75" class="label">Partial + SSE</text>
+    <text x="28" y="99" class="body">results without waiting</text>
   </g>
 
   <path d="M286 356 C318 356 334 356 366 356" class="wire" stroke="#7dd3fc"/>
@@ -114,7 +114,7 @@
 
   <g transform="translate(72 522)">
     <rect width="414" height="48" rx="24" fill="#082f49" fill-opacity="0.48" stroke="#38bdf8" stroke-opacity="0.5"/>
-    <text x="30" y="31" class="small">EVENT LOOP: ROUTE + ACCEPT</text>
+    <text x="40" y="31" class="small">EVENT LOOP: ASYNC HTTP I/O</text>
   </g>
   <g transform="translate(506 522)">
     <rect width="340" height="48" rx="24" fill="#052e16" fill-opacity="0.48" stroke="#34d399" stroke-opacity="0.48"/>
@@ -122,6 +122,6 @@
   </g>
   <g transform="translate(868 522)">
     <rect width="332" height="48" rx="24" fill="#422006" fill-opacity="0.48" stroke="#fbbf24" stroke-opacity="0.48"/>
-    <text x="48" y="31" class="small">CLIENT: STATUS + SSE</text>
+    <text x="34" y="31" class="small">CLIENT: PARTIAL RESULT + SSE</text>
   </g>
 </svg>
