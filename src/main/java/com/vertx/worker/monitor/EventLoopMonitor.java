@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.springframework.stereotype.Component;
@@ -104,6 +105,19 @@ public class EventLoopMonitor {
 
     public void jobFailed(JsonObject trace, JsonObject job, Throwable cause) {
         publish("job.failed", job.getString("type"), trace, job.copy().put("failure", error(cause)));
+    }
+
+    public void ioFanOutStarted(JsonObject trace, JsonArray providers) {
+        publish("io.fanout.started", "inventory.providers", trace,
+                new JsonObject().put("providers", providers));
+    }
+
+    public void ioFanOutCompleted(JsonObject trace, JsonObject result) {
+        publish("io.fanout.completed", "inventory.providers", trace,
+                new JsonObject()
+                        .put("providerCount", result.getInteger("providerCount"))
+                        .put("unavailableProviders", result.getInteger("unavailableProviders"))
+                        .put("elapsedMs", result.getLong("elapsedMs")));
     }
 
     private void publish(String phase, String step, JsonObject trace, JsonObject detail) {

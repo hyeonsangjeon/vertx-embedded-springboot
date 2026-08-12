@@ -1,6 +1,6 @@
 <svg width="1280" height="760" viewBox="0 0 1280 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Vert.x Embedded Spring Boot Async Worker Pattern</title>
-  <desc id="desc">Event-loop based async worker pattern: return 202, rebuild a search index on worker threads, and expose status, SSE progress, and query results.</desc>
+  <title id="title">Vert.x Event Loop and Async Worker Patterns</title>
+  <desc id="desc">Two asynchronous boundaries: concurrent HTTP fan-out on the event loop and accepted blocking work on worker threads.</desc>
 
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
@@ -70,8 +70,8 @@
   <circle cx="1070" cy="84" r="210" fill="url(#blueGlow)"/>
   <circle cx="160" cy="690" r="250" fill="url(#greenGlow)"/>
 
-  <text x="58" y="72" class="title">Async Worker Pattern</text>
-  <text x="58" y="103" class="subtitle">Receive fast. Dispatch async. Execute on workers. Observe progress.</text>
+  <text x="58" y="72" class="title">Event Loop + Async Workers</text>
+  <text x="58" y="103" class="subtitle">Compose non-blocking I/O. Isolate blocking work. Observe every handoff.</text>
 
   <rect x="952" y="48" width="210" height="38" rx="19" class="chip"/>
   <circle cx="976" cy="67" r="7" fill="#34d399"/>
@@ -79,24 +79,24 @@
 
   <g transform="translate(58 128)">
     <rect width="1164" height="48" rx="24" fill="#020617" fill-opacity="0.48" stroke="#334155" stroke-opacity="0.7"/>
-    <rect x="18" y="12" width="152" height="24" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.45"/>
-    <text x="36" y="29" class="tiny">RECEIVE FAST</text>
-    <path d="M186 24H260" class="blueLine"/>
+    <rect x="18" y="12" width="180" height="24" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.45"/>
+    <text x="39" y="29" class="tiny">RECEIVE ON EVENT LOOP</text>
+    <path d="M214 24H260" class="blueLine"/>
     <rect x="278" y="12" width="178" height="24" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.45"/>
-    <text x="299" y="29" class="tiny">DISPATCH ASYNC</text>
+    <text x="300" y="29" class="tiny">COMPOSE ASYNC I/O</text>
     <path d="M472 24H546" class="greenLine"/>
     <rect x="564" y="12" width="214" height="24" rx="12" fill="#0f172a" stroke="#34d399" stroke-opacity="0.45"/>
-    <text x="612" y="29" class="tiny">WORKERS EXECUTE</text>
+    <text x="590" y="29" class="tiny">ISOLATE BLOCKING WORK</text>
     <path d="M794 24H868" class="amberLine"/>
     <rect x="886" y="12" width="248" height="24" rx="12" fill="#0f172a" stroke="#fbbf24" stroke-opacity="0.45"/>
-    <text x="952" y="29" class="tiny">OBSERVE PROGRESS</text>
+    <text x="958" y="29" class="tiny">OBSERVE RESULTS</text>
   </g>
 
   <g transform="translate(58 206)">
     <rect width="1164" height="206" rx="20" class="lane"/>
     <rect x="0" y="0" width="7" height="206" rx="3.5" fill="url(#eventLoop)"/>
-    <text x="24" y="34" class="section">SHORT API REQUEST</text>
-    <text x="24" y="59" class="small">Normal endpoints return after the worker completes the service call.</text>
+    <text x="24" y="34" class="section">NON-BLOCKING HTTP FAN-OUT</text>
+    <text x="24" y="59" class="small">Three inventory services run concurrently; one failure does not discard successful offers.</text>
 
     <g filter="url(#shadow)">
       <rect x="38" y="92" width="158" height="82" rx="16" class="card"/>
@@ -113,32 +113,31 @@
     </g>
 
     <g filter="url(#shadow)">
-      <rect x="502" y="92" width="156" height="82" rx="16" class="card"/>
-      <text x="543" y="126" class="label">Event Bus</text>
-      <text x="534" y="151" class="mono">service proxy</text>
+      <rect x="502" y="82" width="180" height="102" rx="16" class="card eventCard"/>
+      <text x="540" y="122" class="label">WebClient</text>
+      <text x="541" y="150" class="mono">Future.all</text>
+      <text x="532" y="171" class="small">partial-safe join</text>
     </g>
 
     <g filter="url(#shadow)">
-      <rect x="720" y="72" width="190" height="122" rx="18" class="card workerCard"/>
-      <rect x="744" y="94" width="142" height="28" rx="14" fill="url(#worker)"/>
-      <text x="792" y="113" class="tiny" fill="#052e16">WORKER</text>
-      <text x="750" y="151" class="label">VertxWorker</text>
-      <text x="757" y="175" class="small">transactional work</text>
-    </g>
-
-    <g filter="url(#shadow)">
-      <rect x="972" y="72" width="154" height="122" rx="18" class="card observeCard"/>
-      <text x="1009" y="111" class="label">Service</text>
-      <text x="1001" y="137" class="small">JPA / MyBatis</text>
-      <text x="1010" y="163" class="mono">Database</text>
+      <rect x="744" y="72" width="382" height="122" rx="18" class="card eventCard"/>
+      <text x="855" y="99" class="tiny">HTTP INVENTORY PROVIDERS</text>
+      <rect x="764" y="112" width="102" height="58" rx="12" class="chip"/>
+      <text x="788" y="136" class="mono">seoul</text>
+      <text x="788" y="157" class="tiny">180 ms</text>
+      <rect x="884" y="112" width="102" height="58" rx="12" class="chip"/>
+      <text x="908" y="136" class="mono">busan</text>
+      <text x="908" y="157" class="tiny">320 ms</text>
+      <rect x="1004" y="112" width="102" height="58" rx="12" class="chip"/>
+      <text x="1019" y="136" class="mono">incheon</text>
+      <text x="1028" y="157" class="tiny">240 ms</text>
     </g>
 
     <path d="M196 133H254" class="blueLine"/>
     <path d="M444 133H496" class="blueLine"/>
-    <path d="M658 133H714" class="greenLine"/>
-    <path d="M910 133H966" class="greenLine"/>
-    <path d="M972 181 C870 215 625 216 450 177" class="returnLine"/>
-    <text x="528" y="195" class="tiny">result returns through the event bus</text>
+    <path d="M682 133H738" class="blueLine"/>
+    <path d="M744 181 C650 216 540 214 445 177" class="returnLine"/>
+    <text x="505" y="201" class="tiny">combined result returns on the same event loop</text>
   </g>
 
   <g transform="translate(58 442)">
@@ -198,10 +197,10 @@
 
   <g transform="translate(58 700)">
     <rect width="318" height="38" rx="19" fill="#082f49" fill-opacity="0.48" stroke="#38bdf8" stroke-opacity="0.5"/>
-    <text x="42" y="24" class="tiny">EVENT LOOP: ROUTE + ACCEPT</text>
+    <text x="31" y="24" class="tiny">EVENT LOOP: ROUTE + ASYNC I/O</text>
     <rect x="342" width="326" height="38" rx="19" fill="#052e16" fill-opacity="0.48" stroke="#34d399" stroke-opacity="0.48"/>
     <text x="407" y="24" class="tiny">WORKER: BLOCKING WORK</text>
     <rect x="692" width="332" height="38" rx="19" fill="#422006" fill-opacity="0.48" stroke="#fbbf24" stroke-opacity="0.48"/>
-    <text x="739" y="24" class="tiny">CLIENT: STATUS + SEARCH + SSE</text>
+    <text x="718" y="24" class="tiny">CLIENT: PARTIAL RESULT + JOB STATUS</text>
   </g>
 </svg>
