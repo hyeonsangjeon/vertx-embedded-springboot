@@ -144,7 +144,7 @@
     <rect width="1164" height="230" rx="20" class="lane"/>
     <rect x="0" y="0" width="7" height="230" rx="3.5" fill="url(#observe)"/>
     <text x="24" y="34" class="section">ACCEPTED BACKGROUND JOB</text>
-    <text x="24" y="59" class="small">A search-index rebuild returns 202 first, then continues on a worker thread.</text>
+    <text x="24" y="59" class="small">A search-index rebuild returns 202, confirms worker receipt, then runs blocking work.</text>
 
     <g filter="url(#shadow)">
       <rect x="38" y="102" width="158" height="82" rx="16" class="card"/>
@@ -164,7 +164,7 @@
     <g filter="url(#shadow)">
       <rect x="502" y="102" width="156" height="82" rx="16" class="card"/>
       <text x="543" y="136" class="label">Event Bus</text>
-      <text x="531" y="161" class="mono">job command</text>
+      <text x="526" y="161" class="mono">request / reply</text>
     </g>
 
     <g filter="url(#shadow)">

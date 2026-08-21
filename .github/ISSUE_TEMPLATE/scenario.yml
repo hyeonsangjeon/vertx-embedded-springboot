@@ -1,0 +1,32 @@
+name: Scenario proposal
+description: Propose a practical async workload or deterministic failure case.
+title: "[Scenario]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: workload
+    attributes:
+      label: Workload
+      description: Describe the real service task and where blocking or concurrent I/O occurs.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Observable evidence
+      description: What output, lifecycle state, thread name, trace, or invariant should prove the behavior?
+    validations:
+      required: true
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure scenario
+      description: How can the failure be triggered locally and deterministically?
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: New dependencies or services
+      description: Explain why the default self-contained path cannot cover the scenario without them.

@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Verify and publish release evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Verify tag and Maven version
+        run: ./scripts/verify-release-version.sh "${GITHUB_REF_NAME}"
+
+      - name: Build and test
+        run: ./mvnw -B -ntp clean verify -P h2local
+
+      - name: Capture packaged-jar evidence
+        run: ./scripts/packaged-jar-smoke.sh | tee target/release-smoke.txt
+
+      - name: Prepare release assets
+        id: assets
+        shell: bash
+        run: |
+          jar=$(find target -maxdepth 1 -type f -name 'vertx-embedded-springboot-*.jar' ! -name '*.original' -print -quit)
+          if [[ -z "${jar}" ]]; then
+            printf 'Executable jar not found.\n' >&2
+            exit 1
+          fi
+          jar_name=$(basename "${jar}")
+          checksum="target/${jar_name}.sha256"
+          (cd target && sha256sum "${jar_name}" > "${jar_name}.sha256")
+          printf 'jar=%s\n' "${jar}" >> "${GITHUB_OUTPUT}"
+          printf 'checksum=%s\n' "${checksum}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload verified evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: "${{ github.ref_name }}-evidence"
+          path: |
+            ${{ steps.assets.outputs.jar }}
+            ${{ steps.assets.outputs.checksum }}
+            target/release-smoke.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          "${{ steps.assets.outputs.jar }}"
+          "${{ steps.assets.outputs.checksum }}"
+          target/release-smoke.txt
+          --verify-tag
+          --generate-notes
+          --title "${GITHUB_REF_NAME}"

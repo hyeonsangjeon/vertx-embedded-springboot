@@ -82,13 +82,14 @@ public class VertxFacade extends AbstractVerticle {
                 .put("status", "ready")
                 .put("patterns", new JsonObject()
                         .put("nonBlockingIo", "event loop -> concurrent HTTP futures -> combined result")
-                        .put("blockingWork", "202 Accepted -> event bus -> worker thread -> observable result"))
+                        .put("blockingWork", "202 Accepted -> event-bus acknowledgement -> worker thread -> observable result"))
                 .put("servedByThread", Thread.currentThread().getName())
                 .put("try", new JsonObject()
                         .put("watchEvents", "GET /book/events")
                         .put("fanOutAvailability", "GET /book/availability/1")
                         .put("partialFailure", "GET /book/availability/1?fail=busan")
                         .put("submitJob", "POST /book/jobs/reindex")
+                        .put("dispatchFailure", "POST /book/jobs/reindex?fail=dispatch")
                         .put("jobStatus", "GET /book/jobs/{jobId}")
                         .put("searchResult", "GET /book/search?q=Hyeon-Sang"));
 
