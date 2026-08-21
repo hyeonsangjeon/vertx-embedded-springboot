@@ -14,6 +14,7 @@ public class BookJob {
     private int total;
     private int processed;
     private String message;
+    private String failureCode;
     private String error;
     private Instant startedAt;
     private Instant updatedAt;
@@ -38,6 +39,7 @@ public class BookJob {
                 .put("jobId", id)
                 .put("type", type)
                 .put("status", status.name())
+                .put("terminal", status.isTerminal())
                 .put("total", total)
                 .put("processed", processed)
                 .put("progressPercent", progressPercent())
@@ -52,6 +54,9 @@ public class BookJob {
         if (completedAt != null) {
             json.put("completedAt", completedAt.toString());
         }
+        if (failureCode != null) {
+            json.put("failureCode", failureCode);
+        }
         if (error != null) {
             json.put("error", error);
         }
@@ -61,13 +66,26 @@ public class BookJob {
         return json;
     }
 
-    synchronized void markRunning(int total) {
+    synchronized void markDispatching() {
+        if (status != Status.ACCEPTED) {
+            return;
+        }
+        this.status = Status.DISPATCHING;
+        this.message = "dispatching job to a worker";
+        this.updatedAt = Instant.now();
+    }
+
+    synchronized boolean markRunning(int total) {
+        if (status.isTerminal()) {
+            return false;
+        }
         this.status = Status.RUNNING;
         this.total = Math.max(total, 0);
         this.processed = 0;
         this.message = "job started";
         this.startedAt = Instant.now();
         this.updatedAt = startedAt;
+        return true;
     }
 
     synchronized void markProgress(int processed, String message) {
@@ -87,11 +105,28 @@ public class BookJob {
     }
 
     synchronized void markFailed(Throwable cause) {
+        if (status.isTerminal()) {
+            return;
+        }
         this.status = Status.FAILED;
         this.message = "job failed";
+        this.failureCode = "WORKER_EXECUTION_FAILED";
         this.error = cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
         this.completedAt = Instant.now();
         this.updatedAt = completedAt;
+    }
+
+    synchronized boolean markDispatchFailed(Throwable cause) {
+        if (status != Status.ACCEPTED && status != Status.DISPATCHING) {
+            return false;
+        }
+        this.status = Status.DISPATCH_FAILED;
+        this.message = "worker dispatch failed";
+        this.failureCode = "EVENT_BUS_DISPATCH_FAILED";
+        this.error = cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
+        this.completedAt = Instant.now();
+        this.updatedAt = completedAt;
+        return true;
     }
 
     private int progressPercent() {
@@ -106,8 +141,14 @@ public class BookJob {
 
     private enum Status {
         ACCEPTED,
+        DISPATCHING,
         RUNNING,
         COMPLETED,
-        FAILED
+        FAILED,
+        DISPATCH_FAILED;
+
+        private boolean isTerminal() {
+            return this == COMPLETED || this == FAILED || this == DISPATCH_FAILED;
+        }
     }
 }

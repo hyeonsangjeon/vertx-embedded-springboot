@@ -45,7 +45,9 @@ public class BookReindexJobWorker {
 
         try {
             List<Book> books = StreamSupport.stream(bookRepository.findAll().spliterator(), false).toList();
-            job.markRunning(books.size());
+            if (!job.markRunning(books.size())) {
+                return;
+            }
             monitor.jobStarted(trace, job.toJson());
 
             List<BookSearchIndex.IndexedBook> documents = new ArrayList<>(books.size());

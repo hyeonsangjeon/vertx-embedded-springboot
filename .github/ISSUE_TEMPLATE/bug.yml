@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible failure in the sample or its verification path.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to provide a reproducible report.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.7.0 or a commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: path
+    attributes:
+      label: Failing path
+      options:
+        - quickstart
+        - concurrent fan-out
+        - accepted background job
+        - SSE events
+        - persistence API
+        - CI or release
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include the exact commands and the smallest input that fails.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and relevant output
+      description: Remove credentials and sensitive data before posting logs.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS 15, Temurin 17, Bash 5, curl 8
+    validations:
+      required: true

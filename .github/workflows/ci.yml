@@ -30,7 +30,10 @@ jobs:
           cache: maven
 
       - name: Validate demo script
-        run: bash -n scripts/demo.sh scripts/quickstart.sh
+        run: bash -n scripts/demo.sh scripts/quickstart.sh scripts/packaged-jar-smoke.sh scripts/verify-release-version.sh
 
       - name: Build and test
         run: ./mvnw -B -ntp verify -P h2local
+
+      - name: Run packaged-jar end-to-end scenario
+        run: ./scripts/packaged-jar-smoke.sh

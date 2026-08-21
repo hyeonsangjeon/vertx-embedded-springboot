@@ -7,20 +7,20 @@
 ![Maven](https://img.shields.io/badge/build-Maven-C71A36?logo=apachemaven&logoColor=white)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
-This repository is a runnable reference for two asynchronous service boundaries:
+This self-contained, interactive reference lab shows where different kinds of work should run when Spring Boot manages the application and embedded Vert.x provides the asynchronous boundary.
+
+It covers two service workloads without requiring an external database, broker, collector, search engine, or downstream service:
 
 | Workload | Vert.x pattern |
 |---|---|
 | Several independent HTTP calls | Fan out on the event loop with `WebClient`, then combine the futures |
-| JDBC or another blocking SDK | Return `202 Accepted`, dispatch over the event bus, and run on a worker thread |
+| JDBC or another blocking SDK | Return `202 Accepted`, confirm dispatch over the event bus, and run on a worker thread |
 
 ![Animated Vert.x event loop and worker flow](docs/event-loop-hero.gif)
 
-The examples use a book catalog, but the same boundaries apply to inventory aggregation, dataset ingestion, model refresh, report generation, media conversion, and bulk synchronization. Spring Boot owns application lifecycle and persistence. Embedded Vert.x owns the public HTTP boundary, event bus, non-blocking clients, worker pool, and live event stream.
+The sample uses a deliberately small book catalog, but the same boundaries apply to inventory aggregation, dataset ingestion, model refresh, report generation, media conversion, and bulk synchronization. It is a reference lab, not a production library, starter template, or throughput benchmark.
 
-Modernized with **OpenAI Codex** as an AI coding collaborator. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
-
-## Run the Whole Demo
+## Run the Whole Lab
 
 Requirements: Java 17 or newer, `curl`, and Bash (macOS, Linux, WSL, or Git Bash).
 
@@ -30,11 +30,32 @@ cd vertx-embedded-springboot
 ./scripts/quickstart.sh
 ```
 
-That one command builds the executable jar, starts the H2-backed application, runs both examples, and shuts the process down. The Maven Wrapper downloads Maven 3.9.16 on first use. On macOS, the script also selects an installed Java 17 runtime when the shell still defaults to an older JDK.
+The script runs the tests, builds the executable JAR, starts it with H2, checks the healthy and failed scenarios, and shuts everything down. The Maven Wrapper downloads Maven 3.9.16 on first use. On macOS, the script selects an installed Java 17 runtime when the shell still defaults to an older JDK.
 
-No external database, broker, search engine, downstream service, or `jq` installation is required.
+No `jq` installation is required. A successful run ends with these checkpoints:
 
-From Windows PowerShell, start the persistent application with `.\mvnw.cmd spring-boot:run -P h2local`, then run the documented `curl` calls directly.
+```text
+[ok] Healthy fan-out returned 3 providers in <local elapsed> ms (740 ms sequential simulation).
+[ok] Partial failure kept 2 responses and marked 1 provider unavailable.
+job <id> -> COMPLETED
+[ok] Search observed 1 indexed match(es).
+job <id> -> DISPATCH_FAILED
+[ok] Deterministic async boundary demo passed.
+[ok] Packaged-jar smoke test passed.
+```
+
+The script checks that:
+
+- All three provider requests arrive before the test server releases any response.
+- One failed provider does not discard the two successful responses.
+- The HTTP `202 Accepted` response is written before worker dispatch starts.
+- The worker acknowledges receipt over the event bus before running blocking work.
+- The demo polls the job to a terminal state before reading its result.
+- A missing event-bus consumer becomes `DISPATCH_FAILED` instead of disappearing silently.
+
+These checks do not measure production throughput, prove cross-process delivery, or make the in-memory job state durable. The latency values come from deterministic local test doubles. They help explain the flow but do not compare framework performance.
+
+In Windows PowerShell, start the persistent application with `.\mvnw.cmd spring-boot:run -P h2local`, then run the documented `curl` calls directly. A native PowerShell smoke script is not included yet.
 
 To keep the application running for exploration, use two terminals instead:
 
@@ -48,56 +69,50 @@ To keep the application running for exploration, use two terminals instead:
 ./scripts/demo.sh
 ```
 
-The public API is available at [http://localhost:8989](http://localhost:8989). Its root response lists the main calls and the event-loop thread that served the request.
+The public API is available at [http://localhost:8989](http://localhost:8989). Its root response lists the main calls and the event-loop thread that served the request. To ensure that it tests the newly built JAR, `quickstart.sh` refuses to reuse a process already bound to that URL. Use `demo.sh` when you intend to exercise an existing process.
 
-## Example 1: Concurrent MSA Fan-Out
+Set `DEMO_VERBOSE=1` to include the full JSON responses with the compact state and thread trace:
 
-An availability request calls three independent inventory services over real local HTTP connections:
+```bash
+DEMO_VERBOSE=1 ./scripts/demo.sh
+```
+
+## Example 1: Concurrent HTTP Fan-Out
+
+An availability request calls three independent inventory services over local HTTP:
 
 ```bash
 curl http://localhost:8989/book/availability/1
 ```
 
-The providers simulate latencies of 180, 320, and 240 milliseconds. `BookAvailabilityAggregator` starts all three requests before waiting for any response, then combines them with `Future.all`. Normal elapsed time is therefore close to the slowest call rather than the 740 millisecond sequential total.
-
-A typical response, with the per-provider metadata shortened here, looks like this:
+`BookAvailabilityAggregator` starts all three requests before waiting for a response, then combines them with `Future.all`. The result reports the local elapsed time alongside the 740 millisecond simulated sequential sum:
 
 ```json
 {
-  "statusCode": 200,
   "data": {
-    "bookId": 1,
     "strategy": "concurrent-http-fan-out",
     "providerCount": 3,
-    "respondedProviders": 3,
-    "unavailableProviders": 0,
-    "totalQuantity": 8,
     "partial": false,
     "simulatedSequentialLatencyMs": 740,
-    "elapsedMs": 329,
-    "offers": [
-      { "provider": "seoul", "status": "AVAILABLE", "quantity": 3 },
-      { "provider": "busan", "status": "OUT_OF_STOCK", "quantity": 0 },
-      { "provider": "incheon", "status": "AVAILABLE", "quantity": 5 }
-    ]
+    "elapsedMs": 329
   }
 }
 ```
 
-The aggregator isolates downstream failures. Use the built-in fault switch to see a partial result:
+One provider can fail without discarding successful offers:
 
 ```bash
 curl "http://localhost:8989/book/availability/1?fail=busan"
 ```
 
-The response remains `200 OK`, marks Busan as `UNAVAILABLE`, and keeps the successful offers. No worker thread is involved because the entire flow is non-blocking HTTP I/O.
+The response remains `200 OK`, marks Busan `UNAVAILABLE`, and sets `partial` to `true`. See [Concurrent HTTP Fan-Out](docs/fanout.md) for the full response and the structural concurrency test.
 
 ## Example 2: Accepted Background Work
 
-The second flow rebuilds an in-memory book search index. The request returns before any blocking database or indexing work begins:
+The second flow rebuilds an in-memory search index. The request returns before dispatch starts, then event-bus request/reply confirms that a worker received the command:
 
 ```text
-HTTP event loop -> 202 Accepted -> event bus -> worker thread -> observable result
+HTTP event loop -> 202 Accepted -> dispatch acknowledgement -> worker thread -> observable result
 ```
 
 Submit the job:
@@ -106,7 +121,7 @@ Submit the job:
 curl -i -X POST http://localhost:8989/book/jobs/reindex
 ```
 
-The response includes a job ID and polling location:
+The response includes a polling location:
 
 ```http
 HTTP/1.1 202 Accepted
@@ -115,32 +130,20 @@ Retry-After: 1
 Content-Type: application/json; charset=utf-8
 ```
 
-```json
-{
-  "statusCode": 202,
-  "data": {
-    "jobId": "f97f7c86-0581-47b5-bef4-1045f218bb69",
-    "type": "book.search-index.rebuild",
-    "status": "ACCEPTED",
-    "progressPercent": 0,
-    "links": {
-      "status": "/book/jobs/f97f7c86-0581-47b5-bef4-1045f218bb69",
-      "events": "/book/events",
-      "search": "/book/search?q=Hyeon-Sang"
-    }
-  },
-  "message": "search index rebuild accepted"
-}
-```
-
-Poll the `Location` URL, then query the published index:
+Poll `Location` until `terminal` is `true`, then query the published index:
 
 ```bash
 curl http://localhost:8989/book/jobs/{jobId}
 curl "http://localhost:8989/book/search?q=Hyeon-Sang"
 ```
 
-The index is replaced as one immutable snapshot. Readers see either the previous complete index or the new one, never a partially rebuilt state.
+To reproduce a dispatch failure, send the request to an address with no consumer:
+
+```bash
+curl -X POST "http://localhost:8989/book/jobs/reindex?fail=dispatch"
+```
+
+The job reaches `DISPATCH_FAILED` instead of remaining silently accepted. [Accepted Background Job](docs/accepted-job.md) documents the response, state machine, acknowledgement, and durability limit.
 
 ## Watch the Handoffs
 
@@ -159,33 +162,27 @@ io.fanout.completed
 event-loop.completed
 ```
 
-The accepted worker flow is deliberately ordered:
+The accepted worker flow emits events in this order:
 
 ```text
 event-loop.received
 job.accepted
 event-loop.completed      <- the HTTP 202 response has been written
 event-loop.dispatch
+job.dispatching
+job.dispatched            <- a worker consumer acknowledged the command
 job.started               <- now running on vert.x-worker-thread-*
 job.progress
 job.completed
 ```
 
-Each event includes a sequence number, request ID, operation, thread, and elapsed time. This makes event-loop ownership and worker handoff visible without attaching a debugger.
+Each event includes a sequence number, request ID, operation, thread, and elapsed time, making event-loop ownership and worker handoff visible without a debugger.
 
 ## Architecture
 
 ![Vert.x async worker architecture](docs/async-worker-pattern.svg)
 
-The application has three request shapes:
-
-| Shape | Flow |
-|---|---|
-| Concurrent I/O aggregation | Event loop -> WebClient calls -> `Future.all` -> partial-safe HTTP response |
-| Request/response persistence | Event loop -> service proxy -> worker -> JPA/MyBatis -> event-bus reply -> HTTP response |
-| Accepted background job | Event loop -> HTTP 202 -> event-bus command -> worker -> job status, SSE, and search index |
-
-Worker consumers are deployed before the HTTP facade. The server cannot accept traffic before its event-bus handlers exist.
+Spring Boot owns lifecycle and blocking persistence adapters. Embedded Vert.x owns the public HTTP boundary, event bus, non-blocking client, workers, and SSE stream. Worker consumers deploy before the HTTP facade, so the server cannot accept traffic before its handlers exist. See [Architecture](docs/architecture.md) for request shapes, component ownership, ports, and configuration.
 
 ## API
 
@@ -203,6 +200,7 @@ Vert.x serves the public API at `http://localhost:8989`.
 | `DELETE` | `/book/delete/{bookId}` | Delete a book |
 | `GET` | `/book/events` | Stream event-loop, I/O, worker, and job phases over SSE |
 | `POST` | `/book/jobs/reindex` | Accept a search-index rebuild job |
+| `POST` | `/book/jobs/reindex?fail=dispatch` | Trigger an observable missing-consumer dispatch failure |
 | `GET` | `/book/jobs/{jobId}` | Read job status and progress |
 | `GET` | `/book/search?q={query}` | Search the index published by the job |
 
@@ -218,53 +216,15 @@ curl -X POST http://localhost:8989/book/add \
   }'
 ```
 
-## Code Map
+## More Documentation
 
-| Component | Responsibility |
+| Goal | Document |
 |---|---|
-| `Application` | Creates Vert.x and deploys workers before the HTTP facade |
-| `VertxFacade` | Owns the event-loop HTTP boundary and discovery response |
-| `BookAvailabilityAggregator` | Fans out concurrent WebClient calls and preserves partial results |
-| `DemoInventoryProviderHandler` | Supplies deterministic local downstream HTTP behavior |
-| `RouteHandler` / `RequestHandler` | Validate requests, compose futures, return 202, and format responses |
-| `BookAsyncService` | Defines the Vert.x 5 Future-based service proxy contract |
-| `VertxWorker` | Registers persistence and job consumers on the worker pool |
-| `BookReindexJobWorker` | Performs the blocking search-index rebuild |
-| `BookJobRegistry` | Stores accepted-job state for this self-contained sample |
-| `BookSearchIndex` | Atomically publishes and queries the rebuilt index snapshot |
-| `EventLoopMonitor` | Publishes request, I/O, worker, and job phases to SSE clients |
-
-## Ports and Configuration
-
-| Port | Service | Useful URL |
-|---|---|---|
-| `8989` | Vert.x public HTTP server | `http://localhost:8989/` |
-| `7979` | Spring Actuator | `http://localhost:7979/actuator/health` |
-| `9000` | Spring MVC and H2 console | `http://localhost:9000/h2-console` |
-
-Profile-specific settings live under `src/main/resources/profiles/{profile}/`.
-
-| Profile | Purpose |
-|---|---|
-| `h2local` | Zero-setup local run with an in-memory H2 database |
-| `mariadb` | External MariaDB-compatible deployment example |
-
-```properties
-vertx.port=8989
-vertx.worker.pool.size=6
-vertx.springWorker.instances=4
-vertx.max.eventloop.execute.time=10000
-vertx.blocked.thread.check.interval=1000
-demo.reindex.item-delay-ms=150
-```
-
-The reindex delay stands in for a blocking Elasticsearch, OpenSearch, vector-store, model-registry, or filesystem SDK call. It stays inside the worker implementation so the event loop remains responsive.
-
-For MariaDB, update `src/main/resources/profiles/mariadb/application.properties`, then run:
-
-```bash
-./mvnw spring-boot:run -P mariadb
-```
+| Understand the concurrent I/O guarantee | [Concurrent HTTP Fan-Out](docs/fanout.md) |
+| Follow accepted-job states and dispatch acknowledgement | [Accepted Background Job](docs/accepted-job.md) |
+| Find components, ports, profiles, and ownership | [Architecture](docs/architecture.md) |
+| Decide what must change before deployment | [Production Boundary](docs/production-boundary.md) |
+| Diagnose Java, port, startup, or job problems | [Troubleshooting](docs/troubleshooting.md) |
 
 ## Development
 
@@ -272,6 +232,12 @@ Run the full verification suite:
 
 ```bash
 ./mvnw verify -P h2local
+```
+
+Run the same packaged-JAR scenario used by CI:
+
+```bash
+./scripts/packaged-jar-smoke.sh
 ```
 
 Build and run the executable jar:
@@ -287,15 +253,15 @@ Regenerate the animated hero from its SVG source:
 node scripts/render-event-loop-hero-gif.mjs
 ```
 
-The GitHub social preview is available at `docs/social-preview.png`; its editable source is `docs/social-preview.svg`.
+The GitHub social preview is available at `docs/social-preview.png`. Its editable source is `docs/social-preview.svg`.
+
+## Releases
+
+Tagged releases must use a final Maven version that matches the tag exactly. A `vX.Y.Z` tag runs the full verification suite and packaged-JAR scenario before the release workflow attaches the executable JAR, its SHA-256 checksum, and the smoke transcript. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Production Boundary
 
-The sample keeps infrastructure in process so each handoff is easy to inspect. The local inventory providers are test doubles. `BookJobRegistry`, `BookSearchIndex`, and the Vert.x event bus are not durable across restarts.
-
-A production implementation should use real service discovery, authentication, deadlines, and circuit breaking for downstream calls. Background jobs should persist state, define idempotency and retry rules, use a durable broker when delivery guarantees matter, and publish results to external storage.
-
-The core decisions remain the same:
+The local providers, event bus, job registry, index, and H2 database are in-process fixtures. Request/reply confirms local receipt, but it does not provide durable delivery. See [Production Boundary](docs/production-boundary.md) for what needs to change before production. The placement rule remains:
 
 ```text
 non-blocking I/O -> stay on the event loop and compose futures
@@ -314,7 +280,9 @@ blocking work    -> accept or proxy, then isolate it on workers
 
 ## Contributors
 
-Built and maintained by Hyeonsang Jeon, with OpenAI Codex acknowledged as an AI coding collaborator for the modernization work. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
+Hyeonsang Jeon built and maintains this project. OpenAI Codex is credited as an AI coding collaborator on the modernization work. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the verification contract and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 ## References
 

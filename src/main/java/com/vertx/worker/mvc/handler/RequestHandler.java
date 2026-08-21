@@ -9,6 +9,7 @@ import com.vertx.worker.mvc.service.BookAsyncService;
 import com.vertx.worker.search.BookSearchIndex;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -19,6 +20,8 @@ import org.springframework.http.HttpStatus;
 public class RequestHandler {
 
     private static final String CONTENT_TYPE = "application/json; charset=utf-8";
+    private static final String MISSING_JOB_CONSUMER_ADDRESS = BookReindexJobWorker.ADDRESS + ".missing";
+    private static final long JOB_DISPATCH_TIMEOUT_MS = 2_000;
     private final BookAsyncService bookAsyncService;
     private final EventLoopMonitor monitor;
     private final BookJobRegistry jobRegistry;
@@ -119,6 +122,12 @@ public class RequestHandler {
 
     public void createReindexJob(RoutingContext routingContext) {
         JsonObject trace = monitor.startHttpRequest(routingContext, "job.search-index.rebuild");
+        String failure = routingContext.request().getParam("fail");
+        if (failure != null && !failure.equals("dispatch")) {
+            sendBadRequest(routingContext, trace, "fail must be dispatch when provided");
+            return;
+        }
+
         BookJob job = jobRegistry.accept("book.search-index.rebuild");
         JsonObject responseJob = withLinks(job.toJson());
         String statusPath = "/book/jobs/" + job.getId();
@@ -134,7 +143,8 @@ public class RequestHandler {
                 .put("message", "search index rebuild accepted");
 
         sendResult(routingContext.response(), trace, result)
-                .onSuccess(ignored -> dispatchReindexJob(trace, job));
+                .onSuccess(ignored -> dispatchReindexJob(trace, job,
+                        failure == null ? BookReindexJobWorker.ADDRESS : MISSING_JOB_CONSUMER_ADDRESS));
     }
 
     public void getJob(RoutingContext routingContext) {
@@ -213,13 +223,23 @@ public class RequestHandler {
         sendResult(routingContext.response(), null, result);
     }
 
-    private void dispatchReindexJob(JsonObject trace, BookJob job) {
+    private void dispatchReindexJob(JsonObject trace, BookJob job, String address) {
+        jobRegistry.markDispatching(job.getId());
         dispatch(trace, "job.search-index.rebuild");
+        monitor.jobDispatching(trace, job.toJson());
         JsonObject command = new JsonObject()
                 .put("jobId", job.getId())
                 .put("trace", trace);
 
-        vertx.eventBus().send(BookReindexJobWorker.ADDRESS, command);
+        vertx.eventBus().request(
+                address,
+                command,
+                new DeliveryOptions().setSendTimeout(JOB_DISPATCH_TIMEOUT_MS)
+        ).onFailure(cause -> {
+            if (jobRegistry.markDispatchFailed(job.getId(), cause)) {
+                monitor.jobDispatchFailed(trace, job.toJson(), cause);
+            }
+        });
     }
 
     private JsonObject withLinks(JsonObject job) {
@@ -227,7 +247,8 @@ public class RequestHandler {
         return job.copy().put("links", new JsonObject()
                 .put("status", "/book/jobs/" + jobId)
                 .put("events", "/book/events")
-                .put("search", "/book/search?q=Hyeon-Sang"));
+                .put("search", "/book/search?q=Hyeon-Sang")
+                .put("dispatchFailure", "/book/jobs/reindex?fail=dispatch"));
     }
 
     private JsonObject requestBody(RoutingContext routingContext, JsonObject trace) {

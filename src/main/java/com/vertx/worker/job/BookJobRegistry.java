@@ -24,4 +24,14 @@ public class BookJobRegistry {
     public BookJob require(String jobId) {
         return find(jobId).orElseThrow(() -> new IllegalArgumentException("Unknown job: " + jobId));
     }
+
+    public BookJob markDispatching(String jobId) {
+        BookJob job = require(jobId);
+        job.markDispatching();
+        return job;
+    }
+
+    public boolean markDispatchFailed(String jobId, Throwable cause) {
+        return require(jobId).markDispatchFailed(cause);
+    }
 }

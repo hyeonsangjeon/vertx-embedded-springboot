@@ -1,6 +1,9 @@
 package com.vertx.worker.vertx;
 
 import com.vertx.worker.job.BookReindexJobWorker;
+import com.vertx.worker.job.BookJob;
+import com.vertx.worker.job.BookJobRegistry;
+import com.vertx.worker.monitor.EventLoopMonitor;
 import com.vertx.worker.mvc.service.BookAsyncService;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
@@ -25,13 +28,21 @@ public class VertxWorker extends AbstractVerticle {
 
     private final BookAsyncService bookAsyncService;
     private final BookReindexJobWorker bookReindexJobWorker;
+    private final BookJobRegistry jobRegistry;
+    private final EventLoopMonitor monitor;
 
     private MessageConsumer<JsonObject> serviceConsumer;
     private MessageConsumer<JsonObject> jobConsumer;
 
-    public VertxWorker(BookAsyncService bookAsyncService, BookReindexJobWorker bookReindexJobWorker) {
+    public VertxWorker(
+            BookAsyncService bookAsyncService,
+            BookReindexJobWorker bookReindexJobWorker,
+            BookJobRegistry jobRegistry,
+            EventLoopMonitor monitor) {
         this.bookAsyncService = bookAsyncService;
         this.bookReindexJobWorker = bookReindexJobWorker;
+        this.jobRegistry = jobRegistry;
+        this.monitor = monitor;
     }
 
     @Override
@@ -42,7 +53,15 @@ public class VertxWorker extends AbstractVerticle {
 
         jobConsumer = vertx.eventBus().consumer(
                 BookReindexJobWorker.ADDRESS,
-                message -> bookReindexJobWorker.reindex(message.body())
+                message -> {
+                    JsonObject command = message.body();
+                    BookJob job = jobRegistry.require(command.getString("jobId"));
+                    monitor.jobDispatched(command.getJsonObject("trace"), job.toJson());
+                    message.reply(new JsonObject()
+                            .put("jobId", job.getId())
+                            .put("received", true));
+                    bookReindexJobWorker.reindex(command);
+                }
         );
 
         Future.all(serviceConsumer.completion(), jobConsumer.completion()).onComplete(ar -> {
