@@ -38,8 +38,11 @@ No `jq` installation is required. A successful run ends with these checkpoints:
 [ok] Healthy fan-out returned 3 providers in <local elapsed> ms (740 ms sequential simulation).
 [ok] Partial failure kept 2 responses and marked 1 provider unavailable.
 job <id> -> COMPLETED
+[ok] Repeated submission returned the same COMPLETED job with HTTP 200.
+[ok] Different options with the same key returned HTTP 409.
 [ok] Search observed 1 indexed match(es).
 job <id> -> DISPATCH_FAILED
+[ok] Repeated submission returned the same DISPATCH_FAILED job with HTTP 200.
 [ok] Deterministic async boundary demo passed.
 [ok] Packaged-jar smoke test passed.
 ```
@@ -52,6 +55,9 @@ The script checks that:
 - The worker acknowledges receipt over the event bus before running blocking work.
 - The demo polls the job to a terminal state before reading its result.
 - A missing event-bus consumer becomes `DISPATCH_FAILED` instead of disappearing silently.
+- A repeated submission returns the same retained job, and different options with the same key return `409 Conflict`.
+
+The test suite also checks simultaneous retries, admission limits, retention, duplicate worker delivery, and a disconnected HTTP client. Its overload tests hold a job open explicitly, so their results do not depend on machine speed.
 
 These checks do not measure production throughput, prove cross-process delivery, or make the in-memory job state durable. The latency values come from deterministic local test doubles. They help explain the flow but do not compare framework performance.
 
@@ -145,6 +151,21 @@ curl -X POST "http://localhost:8989/book/jobs/reindex?fail=dispatch"
 
 The job reaches `DISPATCH_FAILED` instead of remaining silently accepted. [Accepted Background Job](docs/accepted-job.md) documents the response, state machine, acknowledgement, and durability limit.
 
+### Retry a Submission Without Starting Another Job
+
+Send the same key on both requests:
+
+```bash
+curl -i -X POST http://localhost:8989/book/jobs/reindex \
+  -H 'Idempotency-Key: catalog-refresh-001'
+curl -i -X POST http://localhost:8989/book/jobs/reindex \
+  -H 'Idempotency-Key: catalog-refresh-001'
+```
+
+The first request returns `202 Accepted`. The second returns `200 OK`, `Idempotency-Replayed: true`, and the same `Location`, with the job's current status. Only the first request dispatches work.
+
+By default, one reindex job can be active at a time. A new request while it is active receives `503 Service Unavailable` with `Retry-After: 1`; replay and polling still work. The registry retains at most 256 jobs and keeps terminal jobs and their keys for 15 minutes. These limits are local to one process. See [Retries and Capacity](docs/job-admission.md) for an overload walkthrough, settings, and expiry behavior.
+
 ## Watch the Handoffs
 
 Open the Server-Sent Events stream before making either request:
@@ -177,6 +198,8 @@ job.completed
 ```
 
 Each event includes a sequence number, request ID, operation, thread, and elapsed time, making event-loop ownership and worker handoff visible without a debugger.
+
+Repeated submissions emit `job.replayed`; conflicting or over-capacity submissions emit `job.rejected`. Neither dispatches another job.
 
 ## Architecture
 
@@ -222,6 +245,7 @@ curl -X POST http://localhost:8989/book/add \
 |---|---|
 | Understand the concurrent I/O guarantee | [Concurrent HTTP Fan-Out](docs/fanout.md) |
 | Follow accepted-job states and dispatch acknowledgement | [Accepted Background Job](docs/accepted-job.md) |
+| Retry submissions and handle job capacity limits | [Retries and Capacity](docs/job-admission.md) |
 | Find components, ports, profiles, and ownership | [Architecture](docs/architecture.md) |
 | Decide what must change before deployment | [Production Boundary](docs/production-boundary.md) |
 | Diagnose Java, port, startup, or job problems | [Troubleshooting](docs/troubleshooting.md) |

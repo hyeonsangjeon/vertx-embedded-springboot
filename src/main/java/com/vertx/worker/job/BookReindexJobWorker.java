@@ -41,14 +41,15 @@ public class BookReindexJobWorker {
     public void reindex(JsonObject command) {
         String jobId = command.getString("jobId");
         JsonObject trace = command.getJsonObject("trace");
-        BookJob job = jobRegistry.require(jobId);
+        BookJob job = jobRegistry.find(jobId).orElse(null);
+        if (job == null || !job.markRunning(0)) {
+            return;
+        }
 
         try {
-            List<Book> books = StreamSupport.stream(bookRepository.findAll().spliterator(), false).toList();
-            if (!job.markRunning(books.size())) {
-                return;
-            }
             monitor.jobStarted(trace, job.toJson());
+            List<Book> books = StreamSupport.stream(bookRepository.findAll().spliterator(), false).toList();
+            job.setTotal(books.size());
 
             List<BookSearchIndex.IndexedBook> documents = new ArrayList<>(books.size());
             int processed = 0;

@@ -74,7 +74,7 @@ print_boundary_trace() {
   awk '
     /^event: / { phase = $2; next }
     /^data: / {
-      include = phase ~ /^(io\.fanout\.(started|completed)|event-loop\.dispatch|job\.(accepted|dispatching|dispatched|started|completed|dispatch_failed))$/
+      include = phase ~ /^(io\.fanout\.(started|completed)|event-loop\.dispatch|job\.(accepted|replayed|rejected|dispatching|dispatched|started|completed|dispatch_failed))$/
       if (!include && !(phase == "event-loop.completed" && $0 ~ /"statusCode":202/)) {
         next
       }
@@ -102,6 +102,7 @@ submit_and_wait() {
   local previous_status=''
 
   curl --fail --silent --show-error \
+    --header "Idempotency-Key: ${tmp_dir##*/}-${key}" \
     --dump-header "${headers}" \
     --output "${response}" \
     --request POST "${BASE_URL}${endpoint}"
@@ -153,6 +154,33 @@ submit_and_wait() {
   exit 1
 }
 
+verify_replay() {
+  local key="$1"
+  local endpoint="$2"
+  local expected_status="$3"
+  local headers="${tmp_dir}/${key}-replay-headers.txt"
+  local response="${tmp_dir}/${key}-replay.json"
+  local code=''
+  local original_location=''
+  local replay_location=''
+
+  code=$(curl --silent --show-error --write-out '%{http_code}' \
+    --header "Idempotency-Key: ${tmp_dir##*/}-${key}" \
+    --dump-header "${headers}" --output "${response}" \
+    --request POST "${BASE_URL}${endpoint}")
+  original_location=$(awk 'tolower($1) == "location:" { gsub("\\r", "", $2); print $2; exit }' "${tmp_dir}/${key}-headers.txt")
+  replay_location=$(awk 'tolower($1) == "location:" { gsub("\\r", "", $2); print $2; exit }' "${headers}")
+  if [[ "${code}" != "200" || "${original_location}" != "${replay_location}" \
+      || "$(job_status "${response}")" != "${expected_status}" ]] \
+      || ! grep -qi '^idempotency-replayed: true' "${headers}"; then
+    printf 'The repeated submission did not return the retained job.\n' >&2
+    sed -n '1,120p' "${response}" >&2
+    exit 1
+  fi
+  show_file "${response}"
+  printf '[ok] Repeated submission returned the same %s job with HTTP 200.\n' "${expected_status}"
+}
+
 printf '\nWatching event-loop I/O, dispatch, and worker lifecycle events...\n\n'
 curl --no-buffer --silent --show-error --max-time 30 \
   "${BASE_URL}/book/events" >"${tmp_dir}/events.txt" &
@@ -186,6 +214,19 @@ printf '[ok] Partial failure kept %s responses and marked %s provider unavailabl
 
 printf '\nSubmitting a search-index rebuild and polling its Location...\n\n'
 submit_and_wait normal '/book/jobs/reindex' COMPLETED
+verify_replay normal '/book/jobs/reindex' COMPLETED
+
+printf '\nReusing the key with different options to check conflict handling...\n\n'
+conflict_code=$(curl --silent --show-error --write-out '%{http_code}' \
+  --header "Idempotency-Key: ${tmp_dir##*/}-normal" \
+  --output "${tmp_dir}/conflict.json" \
+  --request POST "${BASE_URL}/book/jobs/reindex?fail=dispatch")
+if [[ "${conflict_code}" != "409" \
+    || "$(json_value "${tmp_dir}/conflict.json" failureCode)" != "IDEMPOTENCY_KEY_CONFLICT" ]]; then
+  printf 'Reusing a key with different options did not return HTTP 409.\n' >&2
+  exit 1
+fi
+printf '[ok] Different options with the same key returned HTTP 409.\n'
 
 printf '\nSearching the index published by the completed worker...\n\n'
 curl --fail --silent --show-error --output "${tmp_dir}/search.json" \
@@ -200,6 +241,7 @@ printf '[ok] Search observed %s indexed match(es).\n' "${match_count}"
 
 printf '\nSubmitting to a missing consumer to prove dispatch failure is observable...\n\n'
 submit_and_wait dispatch '/book/jobs/reindex?fail=dispatch' DISPATCH_FAILED
+verify_replay dispatch '/book/jobs/reindex?fail=dispatch' DISPATCH_FAILED
 
 sleep 0.2
 stop_sse
@@ -209,6 +251,8 @@ for phase in \
   io.fanout.completed \
   event-loop.dispatch \
   job.accepted \
+  job.replayed \
+  job.rejected \
   job.dispatching \
   job.dispatched \
   job.started \

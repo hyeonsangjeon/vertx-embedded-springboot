@@ -128,23 +128,73 @@ public class RequestHandler {
             return;
         }
 
-        BookJob job = jobRegistry.accept("book.search-index.rebuild");
+        if (routingContext.request().headers().getAll("Idempotency-Key").size() > 1) {
+            sendBadRequest(routingContext, trace, "provide only one Idempotency-Key header");
+            return;
+        }
+        String address = failure == null ? BookReindexJobWorker.ADDRESS : MISSING_JOB_CONSUMER_ADDRESS;
+        BookJobRegistry.Admission admission;
+        try {
+            admission = jobRegistry.submit("book.search-index.rebuild",
+                    routingContext.request().getHeader("Idempotency-Key"), address);
+        } catch (IllegalArgumentException e) {
+            sendBadRequest(routingContext, trace, e.getMessage());
+            return;
+        }
+        if (admission.job() == null) {
+            rejectReindexJob(routingContext, trace, admission.outcome());
+            return;
+        }
+
+        BookJob job = admission.job();
+        boolean replayed = admission.outcome() == BookJobRegistry.Outcome.REPLAYED;
         JsonObject responseJob = withLinks(job.toJson());
         String statusPath = "/book/jobs/" + job.getId();
 
-        monitor.jobAccepted(trace, job.toJson());
+        if (replayed) {
+            monitor.jobReplayed(trace, responseJob);
+            routingContext.response().putHeader("Idempotency-Replayed", "true");
+        } else {
+            monitor.jobAccepted(trace, responseJob);
+        }
         routingContext.response()
                 .putHeader("Location", statusPath)
-                .putHeader("Retry-After", "1");
+                .putHeader("Retry-After", "1")
+                .putHeader("Cache-Control", "no-store");
 
         JsonObject result = new JsonObject()
-                .put("statusCode", HttpStatus.ACCEPTED.value())
+                .put("statusCode", replayed ? HttpStatus.OK.value() : HttpStatus.ACCEPTED.value())
                 .put("data", responseJob)
-                .put("message", "search index rebuild accepted");
+                .put("message", replayed ? "existing search index rebuild" : "search index rebuild accepted");
 
-        sendResult(routingContext.response(), trace, result)
-                .onSuccess(ignored -> dispatchReindexJob(trace, job,
-                        failure == null ? BookReindexJobWorker.ADDRESS : MISSING_JOB_CONSUMER_ADDRESS));
+        Future<Void> write = sendResult(routingContext.response(), trace, result);
+        if (!replayed) {
+            write.onSuccess(ignored -> dispatchReindexJob(trace, job, address))
+                    .onFailure(cause -> {
+                        if (jobRegistry.markResponseFailed(job.getId(), cause)) {
+                            monitor.jobDispatchFailed(trace, job.toJson(), cause);
+                        }
+                    });
+        }
+    }
+
+    private void rejectReindexJob(RoutingContext context, JsonObject trace, BookJobRegistry.Outcome outcome) {
+        boolean conflict = outcome == BookJobRegistry.Outcome.KEY_CONFLICT;
+        String code = conflict ? "IDEMPOTENCY_KEY_CONFLICT"
+                : outcome == BookJobRegistry.Outcome.ACTIVE_LIMIT ? "JOB_CAPACITY_EXCEEDED" : "JOB_HISTORY_FULL";
+        String message = conflict ? "Idempotency-Key was already used with different job options"
+                : outcome == BookJobRegistry.Outcome.ACTIVE_LIMIT ? "active job limit reached; retry later"
+                : "job history is full; retry after retained jobs expire";
+        int statusCode = conflict ? HttpStatus.CONFLICT.value() : HttpStatus.SERVICE_UNAVAILABLE.value();
+        if (!conflict) {
+            context.response().putHeader("Retry-After", "1");
+        }
+        context.response().putHeader("Cache-Control", "no-store");
+        monitor.jobRejected(trace, code);
+        sendResult(context.response(), trace, new JsonObject()
+                .put("statusCode", statusCode)
+                .put("data", new JsonObject().put("failureCode", code))
+                .put("message", message));
     }
 
     public void getJob(RoutingContext routingContext) {
@@ -161,6 +211,7 @@ public class RequestHandler {
                         .put("data", new JsonObject())
                         .put("message", "job not found"));
 
+        routingContext.response().putHeader("Cache-Control", "no-store");
         sendResult(routingContext.response(), trace, result);
     }
 

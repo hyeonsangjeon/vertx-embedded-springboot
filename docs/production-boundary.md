@@ -6,12 +6,14 @@ The default profile runs every dependency in one process, keeping the handoffs v
 |---|---|
 | Local inventory handlers | Real discovery, authentication, deadlines, rate limits, retries, and circuit policy |
 | Vert.x local event bus | Durable broker or another delivery mechanism when process loss must not lose work |
-| `BookJobRegistry` | Persistent state, retention, admission control, idempotency, cancellation, and recovery |
+| `BookJobRegistry` | Durable state and idempotency, shared admission across instances, cancellation, execution deadlines, and recovery |
 | `BookSearchIndex` | External index or durable result store with publication and rollback rules |
 | SSE monitor | Authenticated telemetry with bounded retention and sensitive-data controls |
 | H2 | Production database sizing, migrations, credentials, backup, and failover |
 
 Event-bus request/reply confirms receipt by a local consumer. It does not prove that the job will survive a crash or complete exactly once.
+
+The sample bounds active work and retained records and deduplicates submissions within one process. Keys expire with terminal records and disappear on restart. A deployed service needs durable, tenant-scoped keys and an atomic relationship between registration and delivery. The default single active reindex job also prevents concurrent index publication; increasing that limit requires a policy for stale or out-of-order rebuilds.
 
 These placement rules still apply when the infrastructure changes:
 

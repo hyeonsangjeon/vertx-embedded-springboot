@@ -55,7 +55,11 @@ public class VertxWorker extends AbstractVerticle {
                 BookReindexJobWorker.ADDRESS,
                 message -> {
                     JsonObject command = message.body();
-                    BookJob job = jobRegistry.require(command.getString("jobId"));
+                    BookJob job = jobRegistry.find(command.getString("jobId")).orElse(null);
+                    if (job == null) {
+                        message.fail(404, "job not found or expired");
+                        return;
+                    }
                     monitor.jobDispatched(command.getJsonObject("trace"), job.toJson());
                     message.reply(new JsonObject()
                             .put("jobId", job.getId())
