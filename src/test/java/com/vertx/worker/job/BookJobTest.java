@@ -59,4 +59,42 @@ class BookJobTest {
 
         assertEquals("RUNNING", job.toJson().getString("status"));
     }
+
+    @Test
+    void runningJobCannotBeClaimedAgainOrLoseProgress() {
+        BookJob job = new BookJob("job-4", "book.search-index.rebuild");
+        assertTrue(job.markRunning(4));
+        job.markProgress(2, "half done");
+        assertFalse(job.markRunning(0));
+        job.markProgress(1, "late progress");
+        assertEquals(2, job.toJson().getInteger("processed"));
+        assertEquals(4, job.toJson().getInteger("total"));
+    }
+
+    @Test
+    void terminalStatesCannotBeResurrectedOrOverwritten() {
+        for (String terminal : new String[]{"COMPLETED", "FAILED", "DISPATCH_FAILED"}) {
+            BookJob job = new BookJob(terminal, "book.search-index.rebuild");
+            if (terminal.equals("DISPATCH_FAILED")) {
+                job.markDispatchFailed(new IllegalStateException("no consumer"));
+            } else {
+                job.markRunning(3);
+                if (terminal.equals("COMPLETED")) {
+                    job.markCompleted("done", new JsonObject().put("count", 3));
+                } else {
+                    job.markFailed(new IllegalStateException("execution failed"));
+                }
+            }
+            JsonObject finished = job.toJson();
+            job.markDispatching();
+            assertFalse(job.markRunning(0));
+            job.setTotal(99);
+            job.markProgress(99, "late progress");
+            job.markCompleted("late completion", new JsonObject());
+            job.markFailed(new IllegalStateException("late failure"));
+            assertFalse(job.markDispatchFailed(new IllegalStateException("late timeout")));
+            assertFalse(job.markResponseFailed(new IllegalStateException("late response failure")));
+            assertEquals(finished, job.toJson());
+        }
+    }
 }

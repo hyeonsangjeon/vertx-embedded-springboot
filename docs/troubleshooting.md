@@ -30,13 +30,23 @@ Check that ports `8989`, `7979`, and `9000` are free. The public Vert.x server s
 
 ## The Job Never Completes
 
-Poll the `Location` returned by the POST request and inspect `status`, `terminal`, `failureCode`, and `error`. `DISPATCH_FAILED` means no worker acknowledgement arrived. `FAILED` means blocking work started and then failed.
+Poll the `Location` returned by the POST request and inspect `status`, `terminal`, `failureCode`, and `error`. `DISPATCH_FAILED` means dispatch failed or the initial HTTP response could not be written. Its failure code distinguishes `EVENT_BUS_DISPATCH_FAILED` from `HTTP_RESPONSE_FAILED`. `FAILED` means blocking work started and then failed.
 
 Use the SSE stream to inspect the last completed handoff:
 
 ```bash
 curl -N http://localhost:8989/book/events
 ```
+
+## A Submission Returns 503 or 409
+
+Read `data.failureCode`. `JOB_CAPACITY_EXCEEDED` means another job occupies the active limit; wait for it to finish before retrying. `JOB_HISTORY_FULL` means retained records have filled the registry; wait for terminal records to expire. Both responses include `Retry-After`, and existing keys still replay.
+
+`IDEMPOTENCY_KEY_CONFLICT` means the same key was used with different options. Reuse the original options to inspect that job, or choose a new key for a new submission. [Retries and Capacity](job-admission.md) lists the settings and examples.
+
+## A Job Returns 404
+
+Job records and keys are in memory. They disappear on restart, or expire 15 minutes after reaching a terminal state with the default settings. Active jobs do not expire. Reusing an expired key can create new work.
 
 ## Full Demo Output
 

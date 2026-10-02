@@ -91,6 +91,15 @@ public class EventLoopMonitor {
         publish("job.accepted", job.getString("type"), trace, job);
     }
 
+    public void jobReplayed(JsonObject trace, JsonObject job) {
+        publish("job.replayed", job.getString("type"), trace, job);
+    }
+
+    public void jobRejected(JsonObject trace, String code) {
+        publish("job.rejected", trace.getString("operation"), trace,
+                new JsonObject().put("failureCode", code));
+    }
+
     public void jobDispatching(JsonObject trace, JsonObject job) {
         publish("job.dispatching", job.getString("type"), trace, job);
     }

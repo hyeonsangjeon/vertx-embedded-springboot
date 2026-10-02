@@ -2,6 +2,8 @@
 
 `POST /book/jobs/reindex` accepts a request to rebuild the in-memory search index. The HTTP response is written before event-bus dispatch starts.
 
+Use `Idempotency-Key` to recover the same job after a retry. New work is subject to active-job and history limits; see [Retries and Capacity](job-admission.md) for the HTTP contract and examples.
+
 ```text
 ACCEPTED -> DISPATCHING -> RUNNING -> COMPLETED
               |              |
@@ -63,7 +65,9 @@ curl -X POST "http://localhost:8989/book/jobs/reindex?fail=dispatch"
 
 Polling its `Location` returns `DISPATCH_FAILED` with the failure code `EVENT_BUS_DISPATCH_FAILED`. When local dispatch fails, the job cannot remain accepted indefinitely. It moves to a terminal state.
 
-Request/reply proves that an in-process consumer received the command. It does not provide persistence, retry, idempotency, cross-instance coordination, or recovery after a process restart.
+If the initial HTTP response cannot be written, the job also becomes `DISPATCH_FAILED`, with `HTTP_RESPONSE_FAILED`, and no command is dispatched. Repeating its key returns that failed record; a deliberate new attempt needs a new key.
+
+Request/reply proves that an in-process consumer received the command. The registry separately provides bounded, process-local idempotency. Neither provides persistence, automatic retry, cross-instance coordination, or recovery after a process restart.
 
 ## Observable Order
 
@@ -80,3 +84,5 @@ job.completed
 ```
 
 The `job.dispatched` and `job.started` events, along with progress and completion, run on `vert.x-worker-thread-*`. Acceptance, HTTP completion, and dispatch failure run on the event-loop thread.
+
+The worker claims the job before any repository call. Duplicate deliveries do not execute it again. A replayed HTTP submission emits `job.replayed`; a key conflict or capacity rejection emits `job.rejected`. Neither follows the dispatch sequence above.

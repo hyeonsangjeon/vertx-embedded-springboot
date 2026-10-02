@@ -26,7 +26,7 @@ Worker verticles are deployed before `VertxFacade`. If either worker consumer ca
 | `BookAsyncService` | Defines the Vert.x Future-based service proxy contract |
 | `VertxWorker` | Registers persistence and acknowledged job consumers on worker threads |
 | `BookReindexJobWorker` | Runs the blocking search-index rebuild |
-| `BookJobRegistry` | Stores in-memory lifecycle and dispatch-failure state |
+| `BookJobRegistry` | Atomically admits jobs, replays retained keys, and bounds in-memory state |
 | `BookSearchIndex` | Atomically publishes and queries an immutable index snapshot |
 | `EventLoopMonitor` | Publishes request, I/O, dispatch, worker, and job phases over SSE |
 
@@ -54,6 +54,11 @@ vertx.springWorker.instances=4
 vertx.max.eventloop.execute.time=10000
 vertx.blocked.thread.check.interval=1000
 demo.reindex.item-delay-ms=150
+demo.jobs.max-active=1
+demo.jobs.max-retained=256
+demo.jobs.retention-seconds=900
 ```
 
 The reindex delay stands in for a blocking Elasticsearch, OpenSearch, vector-store, model-registry, filesystem, or similar SDK call. It remains inside the worker implementation.
+
+The registry holds a short lock for metadata operations only. Repository access, event-bus requests, HTTP writes, and indexing run outside that lock. Active work never expires; terminal records and their keys expire together. See [Retries and Capacity](job-admission.md) for admission and retention behavior.

@@ -22,7 +22,7 @@ Requirements: Java 17 or newer, Bash, and `curl`.
 ./scripts/packaged-jar-smoke.sh
 ```
 
-The smoke test must finish with the normal job in `COMPLETED`, the missing-consumer scenario in `DISPATCH_FAILED`, and a non-empty search result.
+The smoke test must finish with the normal job in `COMPLETED`, the missing-consumer scenario in `DISPATCH_FAILED`, and a non-empty search result. Both jobs must replay under their original keys, and reusing a key with different options must return `409`.
 
 From a fresh clone, `./scripts/quickstart.sh` runs the same build, tests, packaged-JAR scenario, and cleanup.
 
