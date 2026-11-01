@@ -35,7 +35,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
-        <vertx.version>5.1.6</vertx.version>
+        <vertx.version>5.2.2</vertx.version>
         <mybatis.spring.boot.version>4.1.0</mybatis.spring.boot.version>
     </properties>
 
